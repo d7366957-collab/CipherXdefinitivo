@@ -7,6 +7,8 @@
   <title>CipherX — Mini App</title>
   <!-- SDK oficial de Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Librería oficial Cryptocurrency Icons (CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/styles.css" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -65,7 +67,7 @@
           </div>
         </div>
 
-        <!-- Tarjeta Saldo Total + Onda/Gráfico -->
+        <!-- Tarjeta Saldo Total + Gráfico -->
         <div class="card balance-hero-card">
           <img
             src="img/graph-wave.webp"
@@ -114,7 +116,11 @@
           <div class="card mini-stat-card">
             <div class="mini-stat-title">Saldo Congelado</div>
             <div class="mini-stat-value-row">
-              <span class="mini-stat-icon lock-icon">🔒</span>
+              <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <rect x="4" y="10" width="16" height="11" rx="3" fill="#f5b942" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#cbd5e1" stroke-width="2.3" stroke-linecap="round" />
+                <circle cx="12" cy="15.5" r="1.5" fill="#1e293b" />
+              </svg>
               <span class="mini-stat-num" id="frozenBalanceText">320.00</span>
             </div>
             <div class="mini-stat-unit">USDT</div>
@@ -123,7 +129,11 @@
           <div class="card mini-stat-card">
             <div class="mini-stat-title">Saldo Retirable</div>
             <div class="mini-stat-value-row">
-              <span class="mini-stat-icon wallet-mini-icon">💳</span>
+              <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <rect x="2.5" y="5" width="19" height="14" rx="3" fill="#23bce8" />
+                <rect x="2.5" y="8.5" width="19" height="3" fill="#0d3b4c" />
+                <rect x="5.5" y="14" width="5" height="2" rx="1" fill="#1ae4b6" />
+              </svg>
               <span class="mini-stat-num" id="withdrawableBalanceText">928.32</span>
             </div>
             <div class="mini-stat-unit">USDT</div>
@@ -132,27 +142,29 @@
           <div class="card mini-stat-card">
             <div class="mini-stat-title">Rendimiento Diario</div>
             <div class="mini-stat-value-row">
-              <span class="mini-stat-icon chart-mini-icon">📊</span>
+              <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <rect x="4" y="13" width="3.5" height="7" rx="1" fill="#23bce8" />
+                <rect x="10.25" y="9" width="3.5" height="11" rx="1" fill="#1ae4b6" />
+                <rect x="16.5" y="5" width="3.5" height="15" rx="1" fill="#38bdf8" />
+              </svg>
               <span class="mini-stat-num positive" id="dailyYieldText">+12.68%</span>
             </div>
             <div class="mini-stat-unit">&nbsp;</div>
           </div>
         </div>
 
-        <!-- Banner Operación Automática IA -->
+        <!-- Banner Operación Automática IA (imagen full-bleed + degradado oscuro a la izquierda) -->
         <button type="button" class="card ai-banner-card" id="openAiInfoBtn">
+          <img
+            src="img/banner-robot.webp"
+            alt="Asistente IA CipherX"
+            class="ai-banner-full-img"
+            onerror="this.style.display='none';"
+          />
+          <div class="ai-banner-overlay" aria-hidden="true"></div>
           <div class="ai-banner-text">
             <h2 class="ai-banner-title">Nuestro equipo opera por ti</h2>
             <p class="ai-banner-sub">Inteligencia. Estrategia. Resultados.</p>
-          </div>
-          <div class="ai-banner-visual">
-            <img
-              src="img/banner-robot.webp"
-              alt="Asistente IA CipherX"
-              class="ai-banner-img"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-            />
-            <div class="ai-banner-fallback" style="display:none;">🤖</div>
           </div>
           <span class="ai-chevron">›</span>
         </button>
@@ -174,7 +186,7 @@
            VISTA 2: REFERIDOS
            ========================================================= -->
       <section class="view" id="view-referrals" data-view="referrals" aria-label="Referidos">
-        <!-- Encabezado con caja de regalo 3D -->
+        <!-- Encabezado con banner 3D de referidos -->
         <div class="hero-split-header">
           <div class="hero-split-copy">
             <h1 class="page-hero-title">Referidos</h1>
@@ -185,11 +197,11 @@
             </div>
           </div>
 
-          <div class="hero-3d-art">
+          <div class="hero-3d-art referral-banner-box">
             <img
               src="img/banner-referral.webp"
               alt="Bono de referidos"
-              class="art-3d-img"
+              class="banner-cover-img"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
             />
             <div class="art-3d-fallback" style="display:none;">🎁</div>
@@ -200,7 +212,12 @@
         <div class="benefits-grid">
           <div class="card benefit-card">
             <div class="benefit-top">
-              <span class="benefit-icon">🎁</span>
+              <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <rect x="3" y="10" width="18" height="11" rx="2.5" fill="#1ae4b6" />
+                <rect x="2" y="7" width="20" height="4" rx="1.5" fill="#23bce8" />
+                <rect x="10.75" y="7" width="2.5" height="14" fill="#ffffff" fill-opacity="0.85" />
+                <path d="M12 7c-1.5-2.5-5-2.5-5 0s3.5 0 5 0zm0 0c1.5-2.5 5-2.5 5 0s-3.5 0-5 0z" fill="#38bdf8" />
+              </svg>
               <span class="benefit-label">Bono</span>
             </div>
             <div class="benefit-highlight">+1 USDT</div>
@@ -209,7 +226,7 @@
 
           <div class="card benefit-card">
             <div class="benefit-top">
-              <span class="benefit-icon pct-badge">%</span>
+              <span class="pct-badge icon-3d">%</span>
               <span class="benefit-label">Comisión</span>
             </div>
             <div class="benefit-highlight">+12%</div>
@@ -234,7 +251,12 @@
           </div>
 
           <button type="button" class="btn-primary-gradient full-width mt-12" id="shareTelegramBtn">
-            <span class="btn-icon">✈</span>
+            <svg class="telegram-svg" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
+              />
+            </svg>
             <span>Compartir en Telegram</span>
           </button>
         </div>
@@ -244,7 +266,7 @@
           <div class="card mini-stat-card">
             <div class="mini-stat-title">Total Referidos</div>
             <div class="mini-stat-value-row">
-              <span class="mini-stat-icon">👥</span>
+              <span class="mini-stat-icon icon-3d">👥</span>
               <span class="mini-stat-num" id="totalReferralsCount">128</span>
             </div>
           </div>
@@ -260,7 +282,7 @@
           <div class="card mini-stat-card">
             <div class="mini-stat-title">Comisiones</div>
             <div class="mini-stat-value-row">
-              <span class="mini-stat-icon">💰</span>
+              <span class="mini-stat-icon icon-3d">💰</span>
               <span class="mini-stat-num" id="referralCommissionsText">248.32</span>
             </div>
             <div class="mini-stat-unit">USDT</div>
@@ -284,18 +306,18 @@
            VISTA 3: BILLETERA
            ========================================================= -->
       <section class="view" id="view-wallet" data-view="wallet" aria-label="Billetera">
-        <!-- Encabezado con billetera 3D -->
+        <!-- Encabezado con banner 3D de billetera -->
         <div class="hero-split-header wallet-header">
           <div class="hero-split-copy">
             <h1 class="page-hero-title">Billetera</h1>
             <p class="page-hero-subtitle">Tu libertad, en tus manos</p>
           </div>
 
-          <div class="hero-3d-art wallet-art">
+          <div class="hero-3d-art wallet-banner-box">
             <img
               src="img/banner-wallet.webp"
               alt="Billetera CipherX"
-              class="art-3d-img"
+              class="banner-cover-img"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
             />
             <div class="art-3d-fallback" style="display:none;">👛</div>
@@ -432,7 +454,7 @@
             <img
               src="img/banner-deposit.webp"
               alt="Depósitos seguros USDT"
-              class="promo-coin-img"
+              class="banner-cover-img"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
             />
             <div class="promo-coin-fallback" style="display:none;">₮</div>
@@ -462,7 +484,7 @@
             <img
               src="img/banner-withdraw.webp"
               alt="Retirar USDT"
-              class="withdraw-coin-img"
+              class="banner-cover-img"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
             />
             <div class="withdraw-coin-fallback" style="display:none;">₮</div>
@@ -555,20 +577,32 @@
 
     </main>
 
-    <!-- Barra de navegación inferior (3 pestañas principales) -->
+    <!-- Barra de navegación inferior (3 pestañas principales · ícono de billetera limpio sin X) -->
     <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
       <button type="button" class="nav-tab active" data-target="home">
-        <span class="nav-icon">⌂</span>
+        <svg class="nav-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 10.5L12 3l9 7.5" />
+          <path d="M5.5 9.5V20h13V9.5" />
+        </svg>
         <span class="nav-label">Inicio</span>
       </button>
 
       <button type="button" class="nav-tab" data-target="referrals">
-        <span class="nav-icon">👥</span>
+        <svg class="nav-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+          <circle cx="16.5" cy="9" r="2.4" />
+          <path d="M15.5 19c.3-2.1 1.9-3.6 4-4" />
+        </svg>
         <span class="nav-label">Referidos</span>
       </button>
 
       <button type="button" class="nav-tab" data-target="wallet">
-        <span class="nav-icon">👛</span>
+        <svg class="nav-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2.5" y="5.5" width="19" height="13.5" rx="2.5" />
+          <path d="M2.5 9.5h19" />
+          <circle cx="16.5" cy="14" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
         <span class="nav-label">Billetera</span>
       </button>
     </nav>
@@ -578,5 +612,46 @@
   </div>
 
   <script src="js/app.js"></script>
+
+  <!-- Integración de logos reales de Cryptocurrency Icons en el historial -->
+  <script>
+    (() => {
+      const CDN_BASE = "https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/svg/color";
+      const targetContainer = document.getElementById("tradesListContainer");
+      if (!targetContainer) return;
+
+      const applyCryptoIcons = () => {
+        const rows = targetContainer.querySelectorAll(".list-row");
+        rows.forEach((row) => {
+          const titleEl = row.querySelector(".row-title");
+          const circleEl = row.querySelector(".coin-circle");
+          if (!titleEl || !circleEl || circleEl.dataset.iconApplied === "1") return;
+
+          const symbol = titleEl.textContent.trim().toLowerCase();
+          if (!symbol) return;
+
+          const img = document.createElement("img");
+          img.src = `${CDN_BASE}/${symbol}.svg`;
+          img.alt = symbol.toUpperCase();
+          img.className = "crypto-icon-img";
+          img.onerror = () => {
+            img.remove();
+            circleEl.style.display = "inline-flex";
+          };
+
+          img.onload = () => {
+            circleEl.dataset.iconApplied = "1";
+            circleEl.textContent = "";
+            circleEl.style.background = "transparent";
+            circleEl.appendChild(img);
+          };
+        });
+      };
+
+      applyCryptoIcons();
+      const observer = new MutationObserver(applyCryptoIcons);
+      observer.observe(targetContainer, { childList: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>
