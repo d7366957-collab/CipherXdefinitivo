@@ -1,6 +1,5 @@
 /* ==========================================================================
-   CipherX Mini App — Estilos Visuales (Fase 1)
-   Paleta oscura fintech/crypto, tarjetas translúcidas y acentos turquesa/cian
+   CipherX Mini App — Estilos Visuales (Fase 1 · Ajustes de Precisión)
    ========================================================================== */
 
 :root {
@@ -164,7 +163,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Tarjetas base
+   Tarjetas, utilidades y efecto 3D drop-shadow
    -------------------------------------------------------------------------- */
 .card {
   background: var(--surface-card);
@@ -173,13 +172,8 @@ body {
   backdrop-filter: blur(8px);
 }
 
-.positive {
-  color: var(--positive);
-}
-
-.negative {
-  color: var(--negative);
-}
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
 
 .mb-10 { margin-bottom: 10px; }
 .mb-12 { margin-bottom: 12px; }
@@ -188,6 +182,23 @@ body {
 .mt-12 { margin-top: 12px; }
 .mt-14 { margin-top: 14px; }
 .full-width { width: 100%; }
+
+/* Efecto 3D / brillo en íconos de tarjetas */
+.icon-3d {
+  filter: drop-shadow(0 3px 6px rgba(26, 228, 182, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+}
+
+.svg-3d {
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.banner-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
 /* --------------------------------------------------------------------------
    VISTA 1: INICIO
@@ -397,12 +408,13 @@ body {
 .mini-stat-value-row {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin-top: 6px;
 }
 
 .mini-stat-icon {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .mini-stat-num {
@@ -417,10 +429,13 @@ body {
   margin-top: 1px;
 }
 
-/* Banner IA */
+/* Banner IA full-bleed con degradado oscuro a la izquierda */
 .ai-banner-card {
+  position: relative;
+  overflow: hidden;
   width: 100%;
-  padding: 12px 14px;
+  min-height: 82px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -428,48 +443,54 @@ body {
   text-align: left;
   cursor: pointer;
   margin-bottom: 14px;
-  background: linear-gradient(105deg, rgba(16, 33, 43, 0.95) 0%, rgba(12, 48, 56, 0.85) 100%);
+  background: #0b242d;
+}
+
+.ai-banner-full-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.ai-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(7, 18, 24, 0.94) 0%,
+    rgba(9, 28, 36, 0.78) 56%,
+    rgba(9, 28, 36, 0.25) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ai-banner-text {
+  position: relative;
+  z-index: 2;
+  max-width: 78%;
 }
 
 .ai-banner-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 15.5px;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 .ai-banner-sub {
   font-size: 11.5px;
-  color: var(--text-secondary);
+  color: #b7cdd6;
   margin-top: 2px;
 }
 
-.ai-banner-visual {
-  width: 62px;
-  height: 46px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.ai-banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ai-banner-fallback {
-  width: 100%;
-  height: 100%;
-  font-size: 24px;
-  align-items: center;
-  justify-content: center;
-}
-
 .ai-chevron {
-  font-size: 20px;
-  color: var(--text-secondary);
+  position: relative;
+  z-index: 2;
+  font-size: 22px;
+  color: var(--text-primary);
   line-height: 1;
 }
 
@@ -536,6 +557,14 @@ body {
   flex-shrink: 0;
 }
 
+.crypto-icon-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: block;
+  object-fit: contain;
+}
+
 .coin-btc { background: rgba(247, 147, 26, 0.16); color: #f7931a; }
 .coin-eth { background: rgba(114, 137, 218, 0.18); color: #8fa6ff; }
 .coin-sol { background: rgba(20, 241, 149, 0.15); color: #14f195; }
@@ -579,9 +608,14 @@ body {
 .hero-split-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.hero-split-copy {
+  flex: 1;
+  min-width: 0;
 }
 
 .page-hero-title {
@@ -606,24 +640,21 @@ body {
   line-height: 1.3;
 }
 
-.hero-3d-art {
-  width: 98px;
-  height: 92px;
+.referral-banner-box {
+  width: 146px;
+  min-height: 104px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: #0b232d;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.art-3d-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
 .art-3d-fallback {
-  font-size: 52px;
+  font-size: 46px;
 }
 
 .benefits-grid {
@@ -649,7 +680,7 @@ body {
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  background: rgba(35, 188, 232, 0.16);
+  background: rgba(35, 188, 232, 0.18);
   color: var(--accent-cyan);
   font-size: 11px;
   font-weight: 800;
@@ -725,8 +756,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
+}
+
+.telegram-svg {
+  flex-shrink: 0;
 }
 
 .dot-online {
@@ -756,9 +791,17 @@ body {
   align-items: center;
 }
 
-.wallet-art {
-  width: 104px;
-  height: 86px;
+.wallet-banner-box {
+  width: 148px;
+  height: 92px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: #0b232d;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wallet-balance-card {
@@ -1034,26 +1077,21 @@ body {
 }
 
 .promo-footer-card {
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .promo-coin-wrap {
-  width: 76px;
-  height: 60px;
+  width: 92px;
+  height: 68px;
+  border-radius: 10px;
+  overflow: hidden;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.promo-coin-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
 }
 
 .promo-coin-fallback {
@@ -1109,19 +1147,14 @@ body {
 }
 
 .withdraw-coin-art {
-  width: 72px;
-  height: 58px;
+  width: 88px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.withdraw-coin-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
 }
 
 .withdraw-coin-fallback {
@@ -1278,9 +1311,8 @@ body {
   color: var(--accent-mint);
 }
 
-.nav-icon {
-  font-size: 18px;
-  line-height: 1;
+.nav-svg {
+  display: block;
 }
 
 /* --------------------------------------------------------------------------
@@ -1312,3 +1344,4 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
