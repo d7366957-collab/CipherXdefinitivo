@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#071015" />
+  <title>CipherX — Mini App</title>
+  <!-- SDK oficial de Telegram WebApp -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <!-- Topbar estilo Telegram Mini App -->
+    <header class="tg-topbar" id="tgTopbar">
+      <button type="button" class="tg-top-btn" id="btnTopLeft" aria-label="Cerrar o volver">
+        <span id="topLeftIcon">×</span>
+        <span id="topLeftText">Cerrar</span>
+      </button>
+
+      <div class="tg-brand">
+        <span class="tg-brand-title">CipherX</span>
+        <span class="tg-brand-sub">mini app</span>
+      </div>
+
+      <div class="tg-top-actions">
+        <button type="button" class="tg-icon-btn" id="btnRefreshApp" title="Actualizar vista" aria-label="Actualizar vista">
+          🌐
+        </button>
+        <button type="button" class="tg-icon-btn" id="btnMoreInfo" title="Opciones" aria-label="Opciones">
+          •••
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenedor principal de pantallas -->
+    <main class="views-container" id="viewsContainer">
+
+      <!-- =========================================================
+           VISTA 1: INICIO
+           ========================================================= -->
+      <section class="view active" id="view-home" data-view="home" aria-label="Inicio">
+        <!-- Perfil del usuario -->
+        <div class="profile-row">
+          <div class="avatar-wrap">
+            <img
+              id="userAvatarImg"
+              src=""
+              alt="Avatar"
+              class="avatar-img"
+              style="display:none;"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="avatar-fallback" id="userAvatarFallback">A</div>
+          </div>
+          <div class="profile-meta">
+            <div class="profile-name-line">
+              <h1 class="profile-name" id="userName">Hola, Alex</h1>
+              <span class="verified-badge" title="Cuenta verificada">✓</span>
+            </div>
+            <button type="button" class="profile-id-btn" id="copyUserIdBtn" title="Copiar ID">
+              <span>ID: <strong id="userIdText">78452613</strong></span>
+              <span class="copy-mini-icon">❐</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tarjeta Saldo Total + Onda/Gráfico -->
+        <div class="card balance-hero-card">
+          <img
+            src="img/graph-wave.webp"
+            alt=""
+            aria-hidden="true"
+            class="hero-wave-bg"
+            onerror="this.style.display='none';"
+          />
+
+          <div class="balance-hero-top">
+            <div>
+              <div class="card-label-row">
+                <span>Saldo Total</span>
+                <button type="button" class="eye-btn" id="toggleBalanceVisibility" aria-label="Ocultar o mostrar saldos">
+                  👁
+                </button>
+              </div>
+              <div class="hero-amount" id="totalBalanceText">1,248.32 USDT</div>
+              <div class="hero-delta positive" id="totalDeltaText">+12.68% hoy</div>
+            </div>
+
+            <div class="timeframe-pills" role="group" aria-label="Temporalidad del gráfico">
+              <button type="button" class="tf-btn active" data-tf="1D">1D</button>
+              <button type="button" class="tf-btn" data-tf="1S">1S</button>
+              <button type="button" class="tf-btn" data-tf="1M">1M</button>
+              <button type="button" class="tf-btn" data-tf="1A">1A</button>
+            </div>
+          </div>
+
+          <div class="chart-box">
+            <svg id="balanceChartSvg" viewBox="0 0 360 92" preserveAspectRatio="none" class="line-chart-svg">
+              <defs>
+                <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#17E5B4" stop-opacity="0.24" />
+                  <stop offset="100%" stop-color="#17E5B4" stop-opacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path id="chartAreaPath" d="" fill="url(#chartAreaGrad)"></path>
+              <path id="chartLinePath" d="" fill="none" stroke="#1CE6B7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 3 Mini Tarjetas: Saldo Congelado / Saldo Retirable / Rendimiento Diario -->
+        <div class="stats-triple-grid">
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Saldo Congelado</div>
+            <div class="mini-stat-value-row">
+              <span class="mini-stat-icon lock-icon">🔒</span>
+              <span class="mini-stat-num" id="frozenBalanceText">320.00</span>
+            </div>
+            <div class="mini-stat-unit">USDT</div>
+          </div>
+
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Saldo Retirable</div>
+            <div class="mini-stat-value-row">
+              <span class="mini-stat-icon wallet-mini-icon">💳</span>
+              <span class="mini-stat-num" id="withdrawableBalanceText">928.32</span>
+            </div>
+            <div class="mini-stat-unit">USDT</div>
+          </div>
+
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Rendimiento Diario</div>
+            <div class="mini-stat-value-row">
+              <span class="mini-stat-icon chart-mini-icon">📊</span>
+              <span class="mini-stat-num positive" id="dailyYieldText">+12.68%</span>
+            </div>
+            <div class="mini-stat-unit">&nbsp;</div>
+          </div>
+        </div>
+
+        <!-- Banner Operación Automática IA -->
+        <button type="button" class="card ai-banner-card" id="openAiInfoBtn">
+          <div class="ai-banner-text">
+            <h2 class="ai-banner-title">Nuestro equipo opera por ti</h2>
+            <p class="ai-banner-sub">Inteligencia. Estrategia. Resultados.</p>
+          </div>
+          <div class="ai-banner-visual">
+            <img
+              src="img/banner-robot.webp"
+              alt="Asistente IA CipherX"
+              class="ai-banner-img"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="ai-banner-fallback" style="display:none;">🤖</div>
+          </div>
+          <span class="ai-chevron">›</span>
+        </button>
+
+        <!-- Historial de operaciones del equipo -->
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">Historial de operaciones del equipo</h2>
+            <button type="button" class="section-link" id="toggleAllTradesBtn">Ver todo &gt;</button>
+          </div>
+
+          <div class="card list-card" id="tradesListContainer">
+            <!-- Renderizado dinámico vía JS -->
+          </div>
+        </section>
+      </section>
+
+      <!-- =========================================================
+           VISTA 2: REFERIDOS
+           ========================================================= -->
+      <section class="view" id="view-referrals" data-view="referrals" aria-label="Referidos">
+        <!-- Encabezado con caja de regalo 3D -->
+        <div class="hero-split-header">
+          <div class="hero-split-copy">
+            <h1 class="page-hero-title">Referidos</h1>
+            <p class="page-hero-subtitle">Invita, gana, crece juntos</p>
+            <div class="hero-micro-note">
+              <span class="micro-icon">👥</span>
+              <span>Más personas.<br />Más oportunidades.</span>
+            </div>
+          </div>
+
+          <div class="hero-3d-art">
+            <img
+              src="img/banner-referral.webp"
+              alt="Bono de referidos"
+              class="art-3d-img"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="art-3d-fallback" style="display:none;">🎁</div>
+          </div>
+        </div>
+
+        <!-- 2 Tarjetas de Beneficios: Bono +1 USDT / Comisión +12% -->
+        <div class="benefits-grid">
+          <div class="card benefit-card">
+            <div class="benefit-top">
+              <span class="benefit-icon">🎁</span>
+              <span class="benefit-label">Bono</span>
+            </div>
+            <div class="benefit-highlight">+1 USDT</div>
+            <div class="benefit-sub">Saldo congelado</div>
+          </div>
+
+          <div class="card benefit-card">
+            <div class="benefit-top">
+              <span class="benefit-icon pct-badge">%</span>
+              <span class="benefit-label">Comisión</span>
+            </div>
+            <div class="benefit-highlight">+12%</div>
+            <div class="benefit-sub">Saldo retirable</div>
+          </div>
+        </div>
+
+        <!-- Enlace de referido + Botón Compartir en Telegram -->
+        <div class="card referral-box-card">
+          <label for="referralLinkInput" class="field-caption">Tu enlace de referido</label>
+          <div class="link-input-group">
+            <input
+              type="text"
+              id="referralLinkInput"
+              class="link-readonly-input"
+              value="https://t.me/CipherX_bot?start=78452613"
+              readonly
+            />
+            <button type="button" class="copy-square-btn" id="copyReferralLinkBtn" aria-label="Copiar enlace de referido">
+              ❐
+            </button>
+          </div>
+
+          <button type="button" class="btn-primary-gradient full-width mt-12" id="shareTelegramBtn">
+            <span class="btn-icon">✈</span>
+            <span>Compartir en Telegram</span>
+          </button>
+        </div>
+
+        <!-- Métricas de referidos -->
+        <div class="stats-triple-grid">
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Total Referidos</div>
+            <div class="mini-stat-value-row">
+              <span class="mini-stat-icon">👥</span>
+              <span class="mini-stat-num" id="totalReferralsCount">128</span>
+            </div>
+          </div>
+
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Activos</div>
+            <div class="mini-stat-value-row">
+              <span class="dot-online"></span>
+              <span class="mini-stat-num" id="activeReferralsCount">86</span>
+            </div>
+          </div>
+
+          <div class="card mini-stat-card">
+            <div class="mini-stat-title">Comisiones</div>
+            <div class="mini-stat-value-row">
+              <span class="mini-stat-icon">💰</span>
+              <span class="mini-stat-num" id="referralCommissionsText">248.32</span>
+            </div>
+            <div class="mini-stat-unit">USDT</div>
+          </div>
+        </div>
+
+        <!-- Últimos referidos -->
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">Últimos referidos</h2>
+            <button type="button" class="section-link" id="toggleAllReferralsBtn">Ver todos &gt;</button>
+          </div>
+
+          <div class="card list-card" id="referralsListContainer">
+            <!-- Renderizado dinámico vía JS -->
+          </div>
+        </section>
+      </section>
+
+      <!-- =========================================================
+           VISTA 3: BILLETERA
+           ========================================================= -->
+      <section class="view" id="view-wallet" data-view="wallet" aria-label="Billetera">
+        <!-- Encabezado con billetera 3D -->
+        <div class="hero-split-header wallet-header">
+          <div class="hero-split-copy">
+            <h1 class="page-hero-title">Billetera</h1>
+            <p class="page-hero-subtitle">Tu libertad, en tus manos</p>
+          </div>
+
+          <div class="hero-3d-art wallet-art">
+            <img
+              src="img/banner-wallet.webp"
+              alt="Billetera CipherX"
+              class="art-3d-img"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="art-3d-fallback" style="display:none;">👛</div>
+          </div>
+        </div>
+
+        <!-- Tarjeta Saldo Disponible (Retirable) + Botones Depositar / Retirar -->
+        <div class="card wallet-balance-card">
+          <div class="card-label-row">
+            <span>Saldo Disponible (Retirable)</span>
+            <button type="button" class="eye-btn" id="toggleWalletVisibility" aria-label="Mostrar u ocultar saldo disponible">
+              👁
+            </button>
+          </div>
+          <div class="wallet-main-amount" id="walletAvailableText">1,248.32 USDT</div>
+          <div class="wallet-usd-equiv" id="walletUsdEquivText">≈ 1,248.32 USD</div>
+
+          <div class="wallet-actions-row">
+            <button type="button" class="btn-deposit" id="goToDepositBtn">
+              <span>↓</span>
+              <span>Depositar</span>
+            </button>
+            <button type="button" class="btn-withdraw" id="goToWithdrawBtn">
+              <span>↑</span>
+              <span>Retirar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Redes disponibles -->
+        <section class="section-block">
+          <h2 class="section-title mb-10">Redes disponibles</h2>
+
+          <div class="networks-grid" id="walletNetworksGrid">
+            <button type="button" class="card network-card" data-network="TON">
+              <span class="net-badge net-ton">◆</span>
+              <span class="net-name">TON</span>
+            </button>
+
+            <button type="button" class="card network-card active" data-network="TRC20">
+              <span class="net-badge net-trc20">▼</span>
+              <span class="net-name">TRC20</span>
+            </button>
+
+            <button type="button" class="card network-card" data-network="BEP20">
+              <span class="net-badge net-bep20">❖</span>
+              <span class="net-name">BEP20</span>
+            </button>
+          </div>
+
+          <div class="limits-row">
+            <div class="limit-item">
+              <span class="limit-info-icon">ⓘ</span>
+              <span>Min. retiro: <strong>5 USDT</strong></span>
+            </div>
+            <div class="limit-item">
+              <span class="limit-info-icon">ⓘ</span>
+              <span>Min. depósito: <strong>10 USDT</strong></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Historial de transacciones -->
+        <section class="section-block">
+          <div class="section-header">
+            <h2 class="section-title">Historial de transacciones</h2>
+            <button type="button" class="section-link" id="toggleAllTxBtn">Ver todo &gt;</button>
+          </div>
+
+          <div class="card list-card" id="txListContainer">
+            <!-- Renderizado dinámico vía JS -->
+          </div>
+        </section>
+      </section>
+
+      <!-- =========================================================
+           VISTA 4: DEPOSITAR USDT (Subvista desde Billetera)
+           ========================================================= -->
+      <section class="view" id="view-deposit" data-view="deposit" aria-label="Depositar USDT">
+        <div class="subview-header">
+          <h1 class="subview-title">Depositar USDT</h1>
+          <p class="subview-subtitle">Selecciona la red de depósito</p>
+        </div>
+
+        <!-- Selector de red -->
+        <div class="networks-grid mb-14" id="depositNetworksGrid">
+          <button type="button" class="card network-card" data-network="TON">
+            <span class="net-badge net-ton">◆</span>
+            <span class="net-name">TON</span>
+          </button>
+
+          <button type="button" class="card network-card active" data-network="TRC20">
+            <span class="net-badge net-trc20">▼</span>
+            <span class="net-name">TRC20</span>
+          </button>
+
+          <button type="button" class="card network-card" data-network="BEP20">
+            <span class="net-badge net-bep20">❖</span>
+            <span class="net-name">BEP20</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta QR + Dirección -->
+        <div class="card deposit-qr-card">
+          <div class="qr-box-wrap">
+            <div class="qr-frame">
+              <canvas id="depositQrCanvas" width="116" height="116" aria-label="Código QR de depósito"></canvas>
+              <span class="qr-center-t" aria-hidden="true">₮</span>
+            </div>
+          </div>
+
+          <div class="deposit-address-col">
+            <div class="deposit-addr-label" id="depositAddressTitle">Dirección de depósito (TRC20)</div>
+            <div class="deposit-addr-value" id="depositAddressValue">TXYZ9h7k3s8f4Jm2Qv6L9p1R8t5Wq3eZ1x1234</div>
+            <button type="button" class="btn-copy-address" id="copyDepositAddressBtn">
+              <span>❐</span>
+              <span>Copiar Dirección</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Aviso mínimo depósito -->
+        <div class="card notice-banner-card">
+          <span class="notice-i">ⓘ</span>
+          <div class="notice-text">
+            <div>Envía solo USDT por la red seleccionada.</div>
+            <div>Mínimo 10 USDT.</div>
+          </div>
+        </div>
+
+        <!-- Banner promocional inferior -->
+        <div class="card promo-footer-card">
+          <div class="promo-coin-wrap">
+            <img
+              src="img/banner-deposit.webp"
+              alt="Depósitos seguros USDT"
+              class="promo-coin-img"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="promo-coin-fallback" style="display:none;">₮</div>
+          </div>
+          <div class="promo-copy">
+            <div class="promo-title">Depósitos seguros,<br />un futuro más grande</div>
+            <div class="promo-brand">CipherX</div>
+          </div>
+        </div>
+
+        <!-- CTA principal -->
+        <button type="button" class="btn-cyan-cta full-width mt-14" id="confirmDepositBtn">
+          Ya he realizado el depósito
+        </button>
+      </section>
+
+      <!-- =========================================================
+           VISTA 5: RETIRAR USDT (Subvista desde Billetera)
+           ========================================================= -->
+      <section class="view" id="view-withdraw" data-view="withdraw" aria-label="Retirar USDT">
+        <div class="subview-header withdraw-hero-header">
+          <div>
+            <h1 class="subview-title">Retirar USDT</h1>
+            <p class="subview-subtitle">Completa la información para tu retiro</p>
+          </div>
+          <div class="withdraw-coin-art">
+            <img
+              src="img/banner-withdraw.webp"
+              alt="Retirar USDT"
+              class="withdraw-coin-img"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            />
+            <div class="withdraw-coin-fallback" style="display:none;">₮</div>
+          </div>
+        </div>
+
+        <!-- Saldo disponible -->
+        <div class="card withdraw-balance-card mb-14">
+          <div class="field-caption">Saldo Disponible</div>
+          <div class="withdraw-available-amount" id="withdrawAvailableText">1,248.32 USDT</div>
+        </div>
+
+        <!-- Dirección de billetera -->
+        <div class="form-group mb-14">
+          <label for="withdrawAddressInput" class="field-label">Dirección de Billetera</label>
+          <div class="input-with-trailing">
+            <input
+              type="text"
+              id="withdrawAddressInput"
+              class="dark-input"
+              placeholder="Ingresa la dirección de tu billetera"
+              autocomplete="off"
+            />
+            <button type="button" class="trailing-action-btn" id="pasteAddressBtn" title="Pegar dirección" aria-label="Pegar dirección">
+              ⛶
+            </button>
+          </div>
+        </div>
+
+        <!-- Selector de red -->
+        <div class="form-group mb-14">
+          <div class="field-label">Selecciona la red</div>
+          <div class="networks-grid" id="withdrawNetworksGrid">
+            <button type="button" class="card network-card" data-network="TON">
+              <span class="net-badge net-ton">◆</span>
+              <span class="net-name">TON</span>
+            </button>
+
+            <button type="button" class="card network-card active" data-network="TRC20">
+              <span class="net-badge net-trc20">▼</span>
+              <span class="net-name">TRC20</span>
+            </button>
+
+            <button type="button" class="card network-card" data-network="BEP20">
+              <span class="net-badge net-bep20">❖</span>
+              <span class="net-name">BEP20</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Monto a retirar -->
+        <div class="form-group mb-14">
+          <label for="withdrawAmountInput" class="field-label">Monto a Retirar</label>
+          <div class="input-with-trailing">
+            <input
+              type="number"
+              id="withdrawAmountInput"
+              class="dark-input"
+              placeholder="Ingresa el monto en USDT"
+              step="0.01"
+              min="0"
+            />
+            <button type="button" class="max-pill-btn" id="withdrawMaxBtn">Máximo</button>
+          </div>
+        </div>
+
+        <!-- Resumen de recepción y comisión -->
+        <div class="card summary-box-card mb-12">
+          <div class="summary-row">
+            <span class="summary-label">Monto a recibir</span>
+            <span class="summary-val-strong" id="withdrawReceiveText">0.00 USDT</span>
+          </div>
+          <div class="summary-row mt-8">
+            <span class="summary-label">Comisión de red</span>
+            <span class="summary-val-muted" id="withdrawFeeText">1 USDT</span>
+          </div>
+        </div>
+
+        <!-- Nota de retiro mínimo y revisión manual -->
+        <div class="withdraw-note-row mb-14">
+          <span class="notice-i">ⓘ</span>
+          <span>Mínimo de retiro: 5 USDT. Revisión manual (hasta 24h).</span>
+        </div>
+
+        <!-- Botón Solicitar Retiro -->
+        <button type="button" class="btn-cyan-cta full-width" id="submitWithdrawBtn">
+          Solicitar Retiro
+        </button>
+      </section>
+
+    </main>
+
+    <!-- Barra de navegación inferior (3 pestañas principales) -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
+      <button type="button" class="nav-tab active" data-target="home">
+        <span class="nav-icon">⌂</span>
+        <span class="nav-label">Inicio</span>
+      </button>
+
+      <button type="button" class="nav-tab" data-target="referrals">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Referidos</span>
+      </button>
+
+      <button type="button" class="nav-tab" data-target="wallet">
+        <span class="nav-icon">👛</span>
+        <span class="nav-label">Billetera</span>
+      </button>
+    </nav>
+
+    <!-- Toast de notificaciones ligeras -->
+    <div class="toast" id="toastBanner" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
