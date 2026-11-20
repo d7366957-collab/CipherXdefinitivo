@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#071015" />
   <title>CipherX — Mini App</title>
-  <!-- SDK oficial de Telegram WebApp -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Librería oficial Cryptocurrency Icons (CDN) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/styles.css" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -29,8 +26,21 @@
         <button type="button" class="tg-icon-btn" id="btnRefreshApp" title="Actualizar vista" aria-label="Actualizar vista">
           🌐
         </button>
-        <button type="button" class="tg-icon-btn" id="btnMoreInfo" title="Opciones" aria-label="Opciones">
+        <button type="button" class="tg-icon-btn" id="btnMenu" title="Menú" aria-label="Menú" aria-expanded="false">
           •••
+        </button>
+      </div>
+
+      <!-- Menú desplegable de los 3 puntos -->
+      <div class="top-dropdown" id="threeDotsMenu" role="menu" aria-hidden="true">
+        <button type="button" class="dropdown-item" data-modal="terms" role="menuitem">
+          Términos y Condiciones
+        </button>
+        <button type="button" class="dropdown-item" data-modal="privacy" role="menuitem">
+          Política de Privacidad
+        </button>
+        <button type="button" class="dropdown-item" data-modal="about" role="menuitem">
+          Sobre Nosotros
         </button>
       </div>
     </header>
@@ -153,7 +163,7 @@
           </div>
         </div>
 
-        <!-- Banner Operación Automática IA (imagen full-bleed + degradado oscuro a la izquierda) -->
+        <!-- Banner Operación Automática IA -->
         <button type="button" class="card ai-banner-card" id="openAiInfoBtn">
           <img
             src="img/banner-robot.webp"
@@ -186,25 +196,22 @@
            VISTA 2: REFERIDOS
            ========================================================= -->
       <section class="view" id="view-referrals" data-view="referrals" aria-label="Referidos">
-        <!-- Encabezado con banner 3D de referidos -->
-        <div class="hero-split-header">
-          <div class="hero-split-copy">
+        <!-- Banner superior de lado a lado -->
+        <div class="referral-top-banner card mb-12">
+          <img
+            src="img/banner-referral.webp"
+            alt="Bono de referidos CipherX"
+            class="referral-top-banner-img"
+            onerror="this.style.display='none';"
+          />
+          <div class="referral-top-banner-overlay" aria-hidden="true"></div>
+          <div class="referral-top-banner-content">
             <h1 class="page-hero-title">Referidos</h1>
             <p class="page-hero-subtitle">Invita, gana, crece juntos</p>
             <div class="hero-micro-note">
-              <span class="micro-icon">👥</span>
-              <span>Más personas.<br />Más oportunidades.</span>
+              <span class="micro-icon icon-3d">👥</span>
+              <span>Más personas. Más oportunidades.</span>
             </div>
-          </div>
-
-          <div class="hero-3d-art referral-banner-box">
-            <img
-              src="img/banner-referral.webp"
-              alt="Bono de referidos"
-              class="banner-cover-img"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-            />
-            <div class="art-3d-fallback" style="display:none;">🎁</div>
           </div>
         </div>
 
@@ -222,6 +229,7 @@
             </div>
             <div class="benefit-highlight">+1 USDT</div>
             <div class="benefit-sub">Saldo congelado</div>
+            <p class="benefit-explain">1 USDT en saldo congelado por cada referido que se registre.</p>
           </div>
 
           <div class="card benefit-card">
@@ -231,6 +239,7 @@
             </div>
             <div class="benefit-highlight">+12%</div>
             <div class="benefit-sub">Saldo retirable</div>
+            <p class="benefit-explain">12% de comisión sobre lo que invierta tu referido.</p>
           </div>
         </div>
 
@@ -306,21 +315,18 @@
            VISTA 3: BILLETERA
            ========================================================= -->
       <section class="view" id="view-wallet" data-view="wallet" aria-label="Billetera">
-        <!-- Encabezado con banner 3D de billetera -->
-        <div class="hero-split-header wallet-header">
-          <div class="hero-split-copy">
+        <!-- Banner superior de Billetera a ancho completo -->
+        <div class="wallet-full-banner card mb-12">
+          <img
+            src="img/banner-wallet.webp"
+            alt="Billetera CipherX"
+            class="wallet-full-banner-img"
+            onerror="this.style.display='none';"
+          />
+          <div class="wallet-full-banner-overlay" aria-hidden="true"></div>
+          <div class="wallet-full-banner-copy">
             <h1 class="page-hero-title">Billetera</h1>
             <p class="page-hero-subtitle">Tu libertad, en tus manos</p>
-          </div>
-
-          <div class="hero-3d-art wallet-banner-box">
-            <img
-              src="img/banner-wallet.webp"
-              alt="Billetera CipherX"
-              class="banner-cover-img"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-            />
-            <div class="art-3d-fallback" style="display:none;">👛</div>
           </div>
         </div>
 
@@ -347,23 +353,23 @@
           </div>
         </div>
 
-        <!-- Redes disponibles -->
+        <!-- Redes disponibles con imágenes reales -->
         <section class="section-block">
           <h2 class="section-title mb-10">Redes disponibles</h2>
 
           <div class="networks-grid" id="walletNetworksGrid">
             <button type="button" class="card network-card" data-network="TON">
-              <span class="net-badge net-ton">◆</span>
+              <img src="img/ton.webp" alt="TON" class="net-img" width="32" height="32" />
               <span class="net-name">TON</span>
             </button>
 
             <button type="button" class="card network-card active" data-network="TRC20">
-              <span class="net-badge net-trc20">▼</span>
+              <img src="img/trx.webp" alt="TRC20" class="net-img" width="32" height="32" />
               <span class="net-name">TRC20</span>
             </button>
 
             <button type="button" class="card network-card" data-network="BEP20">
-              <span class="net-badge net-bep20">❖</span>
+              <img src="img/bnb.webp" alt="BEP20" class="net-img" width="32" height="32" />
               <span class="net-name">BEP20</span>
             </button>
           </div>
@@ -405,17 +411,17 @@
         <!-- Selector de red -->
         <div class="networks-grid mb-14" id="depositNetworksGrid">
           <button type="button" class="card network-card" data-network="TON">
-            <span class="net-badge net-ton">◆</span>
+            <img src="img/ton.webp" alt="TON" class="net-img" width="32" height="32" />
             <span class="net-name">TON</span>
           </button>
 
           <button type="button" class="card network-card active" data-network="TRC20">
-            <span class="net-badge net-trc20">▼</span>
+            <img src="img/trx.webp" alt="TRC20" class="net-img" width="32" height="32" />
             <span class="net-name">TRC20</span>
           </button>
 
           <button type="button" class="card network-card" data-network="BEP20">
-            <span class="net-badge net-bep20">❖</span>
+            <img src="img/bnb.webp" alt="BEP20" class="net-img" width="32" height="32" />
             <span class="net-name">BEP20</span>
           </button>
         </div>
@@ -448,16 +454,15 @@
           </div>
         </div>
 
-        <!-- Banner promocional inferior -->
-        <div class="card promo-footer-card">
-          <div class="promo-coin-wrap">
+        <!-- Banner promocional inferior con moneda grande y centrada -->
+        <div class="card promo-footer-card promo-centered-card">
+          <div class="promo-coin-centered-wrap">
             <img
               src="img/banner-deposit.webp"
               alt="Depósitos seguros USDT"
-              class="banner-cover-img"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+              class="coin-large-img"
+              onerror="this.style.display='none';"
             />
-            <div class="promo-coin-fallback" style="display:none;">₮</div>
           </div>
           <div class="promo-copy">
             <div class="promo-title">Depósitos seguros,<br />un futuro más grande</div>
@@ -480,14 +485,13 @@
             <h1 class="subview-title">Retirar USDT</h1>
             <p class="subview-subtitle">Completa la información para tu retiro</p>
           </div>
-          <div class="withdraw-coin-art">
+          <div class="withdraw-coin-centered-wrap">
             <img
               src="img/banner-withdraw.webp"
               alt="Retirar USDT"
-              class="banner-cover-img"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+              class="coin-large-img"
+              onerror="this.style.display='none';"
             />
-            <div class="withdraw-coin-fallback" style="display:none;">₮</div>
           </div>
         </div>
 
@@ -519,17 +523,17 @@
           <div class="field-label">Selecciona la red</div>
           <div class="networks-grid" id="withdrawNetworksGrid">
             <button type="button" class="card network-card" data-network="TON">
-              <span class="net-badge net-ton">◆</span>
+              <img src="img/ton.webp" alt="TON" class="net-img" width="32" height="32" />
               <span class="net-name">TON</span>
             </button>
 
             <button type="button" class="card network-card active" data-network="TRC20">
-              <span class="net-badge net-trc20">▼</span>
+              <img src="img/trx.webp" alt="TRC20" class="net-img" width="32" height="32" />
               <span class="net-name">TRC20</span>
             </button>
 
             <button type="button" class="card network-card" data-network="BEP20">
-              <span class="net-badge net-bep20">❖</span>
+              <img src="img/bnb.webp" alt="BEP20" class="net-img" width="32" height="32" />
               <span class="net-name">BEP20</span>
             </button>
           </div>
@@ -559,14 +563,14 @@
           </div>
           <div class="summary-row mt-8">
             <span class="summary-label">Comisión de red</span>
-            <span class="summary-val-muted" id="withdrawFeeText">1 USDT</span>
+            <span class="summary-val-muted" id="withdrawFeeText">0.15 USDT</span>
           </div>
         </div>
 
-        <!-- Nota de retiro mínimo y revisión manual -->
+        <!-- Nota de retiro mínimo y procesamiento por lotes -->
         <div class="withdraw-note-row mb-14">
           <span class="notice-i">ⓘ</span>
-          <span>Mínimo de retiro: 5 USDT. Revisión manual (hasta 24h).</span>
+          <span>Mínimo de retiro: 5 USDT. Retiro automático en lotes. Puede tardar hasta 24 horas.</span>
         </div>
 
         <!-- Botón Solicitar Retiro -->
@@ -607,51 +611,21 @@
       </button>
     </nav>
 
+    <!-- Modal Informativo (Flat Dark Mode #15171C) -->
+    <div class="modal-backdrop" id="infoModalBackdrop" aria-hidden="true">
+      <div class="flat-modal-card" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+        <div class="flat-modal-header">
+          <h2 class="flat-modal-title" id="infoModalTitle">Información</h2>
+          <button type="button" class="flat-modal-close" id="closeInfoModalBtn" aria-label="Cerrar">×</button>
+        </div>
+        <div class="flat-modal-body" id="infoModalBody"></div>
+      </div>
+    </div>
+
     <!-- Toast de notificaciones ligeras -->
     <div class="toast" id="toastBanner" role="status" aria-live="polite"></div>
   </div>
 
   <script src="js/app.js"></script>
-
-  <!-- Integración de logos reales de Cryptocurrency Icons en el historial -->
-  <script>
-    (() => {
-      const CDN_BASE = "https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/svg/color";
-      const targetContainer = document.getElementById("tradesListContainer");
-      if (!targetContainer) return;
-
-      const applyCryptoIcons = () => {
-        const rows = targetContainer.querySelectorAll(".list-row");
-        rows.forEach((row) => {
-          const titleEl = row.querySelector(".row-title");
-          const circleEl = row.querySelector(".coin-circle");
-          if (!titleEl || !circleEl || circleEl.dataset.iconApplied === "1") return;
-
-          const symbol = titleEl.textContent.trim().toLowerCase();
-          if (!symbol) return;
-
-          const img = document.createElement("img");
-          img.src = `${CDN_BASE}/${symbol}.svg`;
-          img.alt = symbol.toUpperCase();
-          img.className = "crypto-icon-img";
-          img.onerror = () => {
-            img.remove();
-            circleEl.style.display = "inline-flex";
-          };
-
-          img.onload = () => {
-            circleEl.dataset.iconApplied = "1";
-            circleEl.textContent = "";
-            circleEl.style.background = "transparent";
-            circleEl.appendChild(img);
-          };
-        });
-      };
-
-      applyCryptoIcons();
-      const observer = new MutationObserver(applyCryptoIcons);
-      observer.observe(targetContainer, { childList: true, subtree: true });
-    })();
-  </script>
 </body>
 </html>
