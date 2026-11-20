@@ -1514,3 +1514,12 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+/* Arreglo rápido para agrandar las imágenes de las monedas */
+.withdraw-header-coins, 
+.deposit-coins-img {
+    width: 100px !important;
+    height: auto !important;
+    object-fit: contain !important;
+    position: relative !important;
+    top: 10px !important;
+}
