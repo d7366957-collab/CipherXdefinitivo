@@ -1558,3 +1558,53 @@ body {
 #view-withdraw .withdraw-hero-header {
   align-items: center !important;
 }
+#view-deposit .promo-centered-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 16px !important;
+  padding: 14px 16px !important;
+}
+
+#view-deposit .promo-coin-centered-wrap {
+  width: 116px !important;
+  height: 116px !important;
+  min-width: 116px !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #07090c !important;
+}
+
+#view-withdraw .withdraw-hero-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+#view-withdraw .withdraw-coin-centered-wrap {
+  width: 112px !important;
+  height: 112px !important;
+  min-width: 112px !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #07090c !important;
+}
+
+#view-deposit .coin-large-img,
+#view-withdraw .coin-large-img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: none !important;
+  display: block !important;
+}
