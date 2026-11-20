@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Column, BigInteger, String, Numeric, DateTime, ForeignKey, func
 from sqlalchemy.orm import Session, relationship
 
@@ -58,12 +58,19 @@ class Trade(Base):
     user = relationship("User", back_populates="trades")
 
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 
 # ==========================================================================
-# Esquemas Pydantic de Respuesta
+# Esquemas Pydantic
 # ==========================================================================
+
+class UserRegisterIn(BaseModel):
+    telegram_id: int = Field(..., gt=0)
+    nombre: str = Field(..., min_length=1, max_length=120)
+    username: Optional[str] = Field(default=None, max_length=120)
+    id_patrocinador: Optional[int] = Field(default=None, gt=0)
+
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -79,35 +86,7 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
-# ==========================================================================
-# Aplicación FastAPI
-# ==========================================================================
-
-app = FastAPI(title="CipherX API", version="0.2.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": 2}
-
-
-@app.get("/api/user/{telegram_id}", response_model=UserOut)
-def get_user_by_telegram_id(telegram_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.telegram_id == telegram_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado",
-        )
-
+def build_user_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
         telegram_id=user.telegram_id,
@@ -119,3 +98,77 @@ def get_user_by_telegram_id(telegram_id: int, db: Session = Depends(get_db)):
         id_patrocinador=user.id_patrocinador,
         created_at=user.created_at,
     )
+
+
+# ==========================================================================
+# Aplicación FastAPI
+# ==========================================================================
+
+app = FastAPI(title="CipherX API", version="0.2.1")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+REFERRAL_BONUS_CONGELADO = Decimal("1.000000")
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "cipherx-api", "phase": "2A"}
+
+
+@app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
+    if existing_user:
+        return build_user_out(existing_user)
+
+    sponsor_id: Optional[int] = None
+    sponsor: Optional[User] = None
+
+    if payload.id_patrocinador and payload.id_patrocinador != payload.telegram_id:
+        sponsor = db.query(User).filter(User.telegram_id == payload.id_patrocinador).first()
+        if sponsor:
+            sponsor_id = sponsor.telegram_id
+
+    new_user = User(
+        telegram_id=payload.telegram_id,
+        nombre=payload.nombre.strip(),
+        username=payload.username.strip() if payload.username else None,
+        saldo_congelado=Decimal("0.000000"),
+        saldo_retirable=Decimal("0.000000"),
+        id_patrocinador=sponsor_id,
+    )
+    db.add(new_user)
+    db.flush()
+
+    if sponsor:
+        sponsor.saldo_congelado = Decimal(sponsor.saldo_congelado) + REFERRAL_BONUS_CONGELADO
+        bono_tx = Transaction(
+            user_id=sponsor.id,
+            tipo="bono",
+            monto=REFERRAL_BONUS_CONGELADO,
+            red=None,
+            estado="completado",
+        )
+        db.add(bono_tx)
+
+    db.commit()
+    db.refresh(new_user)
+    return build_user_out(new_user)
+
+
+@app.get("/api/user/{telegram_id}", response_model=UserOut)
+def get_user_by_telegram_id(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+    return build_user_out(user)
