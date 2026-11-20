@@ -1523,3 +1523,38 @@ body {
     position: relative !important;
     top: 10px !important;
 }
+/* ==========================================================================
+   Fix definitivo: Monedas USDT en Depositar y Retirar más grandes y limpias
+   ========================================================================== */
+#view-deposit .promo-coin-centered-wrap,
+#view-withdraw .withdraw-coin-centered-wrap {
+  width: 124px !important;
+  height: 104px !important;
+  background: transparent !important;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible !important;
+}
+
+#view-deposit .coin-large-img,
+#view-withdraw .coin-large-img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 124px;
+  max-height: 104px;
+  object-fit: contain !important;
+  border-radius: 12px;
+  filter: drop-shadow(0 6px 14px rgba(26, 228, 182, 0.24)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
+}
+
+#view-deposit .promo-centered-card {
+  justify-content: flex-start !important;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+}
+
+#view-withdraw .withdraw-hero-header {
+  align-items: center !important;
+}
