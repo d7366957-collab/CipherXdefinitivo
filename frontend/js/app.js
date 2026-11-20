@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CipherX Mini App — Lógica de Interfaz y Datos Mock (Fase 1)
+   CipherX Mini App — Lógica de Interfaz, Datos Mock y Modales Informativos
    ========================================================================== */
 
 (() => {
@@ -7,10 +7,7 @@
 
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 
-  // ------------------------------------------------------------------------
-  // Datos Mock iniciales (coherentes con las reglas de negocio CipherX)
-  // ------------------------------------------------------------------------
-  const MOCK_STATE = {
+  const mockData = {
     user: {
       name: "Alex",
       id: "78452613",
@@ -25,24 +22,22 @@
       dailyDeltaPct: 12.68,
     },
     hiddenBalances: false,
-    activeTab: "home", // 'home' | 'referrals' | 'wallet' | 'deposit' | 'withdraw'
+    activeTab: "home",
     previousMainTab: "home",
     selectedNetwork: "TRC20",
-    withdrawFeeUsdt: 1.0,
+    withdrawFeeUsdt: 0.15,
     minDepositUsdt: 10.0,
     minWithdrawUsdt: 5.0,
     showAllTrades: false,
     showAllReferrals: false,
     showAllTx: false,
 
-    // Direcciones hijas de ejemplo por red
     depositAddresses: {
       TON: "UQBx7k9mP2nR5vT8wL1zC4jH6gF3dS9aE2yK7mN4pQ8rV1xZ",
       TRC20: "TXYZ9h7k3s8f4Jm2Qv6L9p1R8t5Wq3eZ1x1234",
       BEP20: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
     },
 
-    // Series de gráfico por temporalidad
     chartSeries: {
       "1D": [18, 24, 21, 32, 29, 41, 38, 52, 49, 64, 59, 76],
       "1S": [15, 28, 35, 30, 48, 44, 58, 63, 55, 70, 74, 82],
@@ -50,26 +45,22 @@
       "1A": [10, 19, 26, 39, 45, 52, 60, 66, 73, 78, 84, 90],
     },
 
-    // Operaciones automáticas del equipo (80% ganadas / 20% perdidas)
+    // Historial de operaciones con Ethereum y apalancamiento/futuros
     trades: [
-      { pair: "BTC", time: "Hoy 14:32", amount: +18.24, pct: +2.36 },
-      { pair: "ETH", time: "Hoy 12:11", amount: -6.12, pct: -0.84 },
-      { pair: "SOL", time: "Hoy 10:05", amount: +14.37, pct: +3.21 },
-      { pair: "BNB", time: "Hoy 08:47", amount: +9.18, pct: +1.42 },
-      { pair: "BTC", time: "Hoy 06:21", amount: +11.06, pct: +1.96 },
-      { pair: "ETH", time: "Hoy 03:18", amount: -4.85, pct: -0.62 },
-      { pair: "SOL", time: "Ayer 22:50", amount: +8.40, pct: +1.75 },
-      { pair: "BNB", time: "Ayer 19:14", amount: +6.95, pct: +1.18 },
+      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 14:32", amount: +18.24, pct: +2.36 },
+      { title: "Ethereum SHORT", detail: "Futuros · Hoy 12:11", amount: -6.12, pct: -0.84 },
+      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 10:05", amount: +14.37, pct: +3.21 },
+      { title: "Ethereum LONG", detail: "Futuros · Hoy 08:47", amount: +9.18, pct: +1.42 },
+      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 06:21", amount: +11.06, pct: +1.96 },
+      { title: "Ethereum SHORT", detail: "Futuros · Hoy 03:18", amount: -4.85, pct: -0.62 },
     ],
 
-    // Referidos recientes (+1.00 USDT bono saldo congelado)
     referrals: [
       { handle: "@javier23", timeAgo: "Hace 2 horas", bonus: "+1.00 USDT" },
       { handle: "@maria_fox", timeAgo: "Hace 5 horas", bonus: "+1.00 USDT" },
       { handle: "@crypto_jp", timeAgo: "Hace 1 día", bonus: "+1.00 USDT" },
       { handle: "@sofia.trader", timeAgo: "Hace 1 día", bonus: "+1.00 USDT" },
       { handle: "@dani_web3", timeAgo: "Hace 2 días", bonus: "+1.00 USDT" },
-      { handle: "@carlos_fx", timeAgo: "Hace 3 días", bonus: "+1.00 USDT" },
     ],
     referralStats: {
       total: 128,
@@ -77,7 +68,6 @@
       commissions: 248.32,
     },
 
-    // Historial de transacciones de billetera
     transactions: [
       { type: "deposit", label: "Depósito", date: "14 abr 2025 · 10:24", amount: +100.0, status: "Completado" },
       { type: "withdraw", label: "Retiro", date: "12 abr 2025 · 18:32", amount: -50.0, status: "Completado" },
@@ -86,9 +76,65 @@
     ],
   };
 
-  // ------------------------------------------------------------------------
-  // Helpers de formato y DOM
-  // ------------------------------------------------------------------------
+  const MODAL_CONTENT = {
+    terms: {
+      title: "Términos y Condiciones",
+      html: `
+        <h3>1. Aceptación del Servicio</h3>
+        <p>Al acceder o utilizar CipherX Mini App, aceptas cumplir estos Términos y Condiciones y toda normativa aplicable relacionada con el uso de herramientas digitales y gestión de capital.</p>
+        <h3>2. Riesgos de Mercado</h3>
+        <p>La operativa en activos digitales y contratos de futuros conlleva riesgos inherentes de volatilidad. Los rendimientos pasados o las estimaciones operativas no garantizan resultados futuros.</p>
+        <h3>3. Depósitos, Retiros y Comisiones</h3>
+        <p>El depósito mínimo es de 10 USDT en las redes habilitadas (TON, TRC20, BEP20). El retiro mínimo es de 5 USDT, con una comisión de red de 0.15 USDT y procesamiento automático en lotes de hasta 24 horas.</p>
+        <h3>4. Programa de Referidos</h3>
+        <p>Los bonos promocionales y comisiones por referidos se rigen por las reglas vigentes en la plataforma y están sujetos a controles antifraude.</p>
+      `,
+    },
+    privacy: {
+      title: "Política de Privacidad",
+      html: `
+        <h3>1. Datos Recopilados</h3>
+        <p>CipherX recopila únicamente la información necesaria para operar tu cuenta dentro de Telegram (identificador de usuario, nombre visible y registros de transacciones internas).</p>
+        <h3>2. Finalidad del Tratamiento</h3>
+        <p>Utilizamos tus datos para acreditar saldos, gestionar depósitos y retiros, calcular comisiones de referidos y mantener la seguridad de la plataforma.</p>
+        <h3>3. Protección y Conservación</h3>
+        <p>Aplicamos medidas técnicas y organizativas para proteger la integridad de los registros. No vendemos ni cedemos datos personales a terceros no autorizados.</p>
+      `,
+    },
+    about: {
+      title: "Sobre Nosotros",
+      html: `
+        <h3>Nuestra Historia</h3>
+        <p>Fundada en 2019, CipherX nació con la misión de democratizar el trading cuantitativo y la gestión estratégica de capital, acercando metodologías algorítmicas y de seguimiento de mercado a usuarios de todo el mundo mediante una interfaz ágil y accesible.</p>
+        <h3>Equipo Ejecutivo</h3>
+        <div class="exec-card">
+          <img src="https://i.pravatar.cc/96?img=12" alt="Daniel Mendoza" class="exec-avatar" />
+          <div>
+            <div class="exec-name">Daniel Mendoza</div>
+            <div class="exec-role">CEO &amp; Co-Fundador</div>
+            <div class="exec-bio">Más de 12 años en mercados financieros y arquitectura de productos fintech enfocada en escalabilidad y gestión de riesgo.</div>
+          </div>
+        </div>
+        <div class="exec-card">
+          <img src="https://i.pravatar.cc/96?img=33" alt="Valeria Ríos" class="exec-avatar" />
+          <div>
+            <div class="exec-name">Valeria Ríos</div>
+            <div class="exec-role">CTO</div>
+            <div class="exec-bio">Especialista en sistemas distribuidos, automatización de ejecución y seguridad de infraestructura en tiempo real.</div>
+          </div>
+        </div>
+        <div class="exec-card">
+          <img src="https://i.pravatar.cc/96?img=52" alt="Mateo Salgado" class="exec-avatar" />
+          <div>
+            <div class="exec-name">Mateo Salgado</div>
+            <div class="exec-role">CFO</div>
+            <div class="exec-bio">Responsable de tesorería, control de liquidez, auditoría operativa y sostenibilidad financiera del ecosistema.</div>
+          </div>
+        </div>
+      `,
+    },
+  };
+
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -107,7 +153,7 @@
     clearTimeout(showToast._timer);
     showToast._timer = setTimeout(() => {
       toast.classList.remove("show");
-    }, 2200);
+    }, 2300);
   }
 
   async function copyToClipboard(text, successMsg = "Copiado al portapapeles") {
@@ -128,9 +174,6 @@
     }
   }
 
-  // ------------------------------------------------------------------------
-  // Inicialización Telegram WebApp SDK
-  // ------------------------------------------------------------------------
   function initTelegramBridge() {
     if (!tg) return;
     try {
@@ -146,11 +189,11 @@
       const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
       if (tgUser) {
         if (tgUser.first_name) {
-          MOCK_STATE.user.name = tgUser.first_name;
+          mockData.user.name = tgUser.first_name;
         }
         if (tgUser.id) {
-          MOCK_STATE.user.id = String(tgUser.id);
-          MOCK_STATE.user.referralLink = `https://t.me/CipherX_bot?start=${tgUser.id}`;
+          mockData.user.id = String(tgUser.id);
+          mockData.user.referralLink = `https://t.me/CipherX_bot?start=${tgUser.id}`;
         }
       }
     } catch (err) {
@@ -158,28 +201,53 @@
     }
   }
 
-  // ------------------------------------------------------------------------
-  // Navegación entre pantallas y subvistas
-  // ------------------------------------------------------------------------
+  function closeThreeDotsMenu() {
+    const menu = $("#threeDotsMenu");
+    const btn = $("#btnMenu");
+    if (menu) {
+      menu.classList.remove("open");
+      menu.setAttribute("aria-hidden", "true");
+    }
+    if (btn) {
+      btn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function openInfoModal(type) {
+    const item = MODAL_CONTENT[type];
+    if (!item) return;
+    closeThreeDotsMenu();
+    $("#infoModalTitle").textContent = item.title;
+    $("#infoModalBody").innerHTML = item.html;
+    const backdrop = $("#infoModalBackdrop");
+    backdrop.classList.add("open");
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+
+  function closeInfoModal() {
+    const backdrop = $("#infoModalBackdrop");
+    if (!backdrop) return;
+    backdrop.classList.remove("open");
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
   function navigateTo(targetView) {
+    closeThreeDotsMenu();
     const isSubView = targetView === "deposit" || targetView === "withdraw";
     if (!isSubView) {
-      MOCK_STATE.previousMainTab = targetView;
+      mockData.previousMainTab = targetView;
     }
-    MOCK_STATE.activeTab = targetView;
+    mockData.activeTab = targetView;
 
-    // Mostrar vista correspondiente
     $$(".view").forEach((viewEl) => {
       viewEl.classList.toggle("active", viewEl.id === `view-${targetView}`);
     });
 
-    // Actualizar barra inferior (resalta Billetera cuando estás en Depositar/Retirar)
     const navHighlight = isSubView ? "wallet" : targetView;
     $$(".nav-tab").forEach((tabEl) => {
       tabEl.classList.toggle("active", tabEl.dataset.target === navHighlight);
     });
 
-    // Actualizar botón superior izquierdo (< Volver en subvistas, × Cerrar en principales)
     const topLeftIcon = $("#topLeftIcon");
     const topLeftText = $("#topLeftText");
     if (isSubView) {
@@ -191,21 +259,18 @@
     }
 
     if (targetView === "deposit") {
-      syncNetworkSelectors(MOCK_STATE.selectedNetwork);
+      syncNetworkSelectors(mockData.selectedNetwork);
       renderDepositPanel();
     } else if (targetView === "withdraw") {
-      syncNetworkSelectors(MOCK_STATE.selectedNetwork);
+      syncNetworkSelectors(mockData.selectedNetwork);
       updateWithdrawCalc();
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ------------------------------------------------------------------------
-  // Renderizado: Inicio
-  // ------------------------------------------------------------------------
   function renderChart(timeframe = "1D") {
-    const series = MOCK_STATE.chartSeries[timeframe] || MOCK_STATE.chartSeries["1D"];
+    const series = mockData.chartSeries[timeframe] || mockData.chartSeries["1D"];
     const width = 360;
     const height = 84;
     const padX = 4;
@@ -238,21 +303,13 @@
     const container = $("#tradesListContainer");
     if (!container) return;
 
-    const list = MOCK_STATE.showAllTrades
-      ? MOCK_STATE.trades
-      : MOCK_STATE.trades.slice(0, 6);
-
-    const coinSymbolMap = {
-      BTC: { cls: "coin-btc", glyph: "₿" },
-      ETH: { cls: "coin-eth", glyph: "◆" },
-      SOL: { cls: "coin-sol", glyph: "≡" },
-      BNB: { cls: "coin-bnb", glyph: "❖" },
-    };
+    const list = mockData.showAllTrades
+      ? mockData.trades
+      : mockData.trades.slice(0, 5);
 
     container.innerHTML = list
       .map((item) => {
         const isPos = item.amount >= 0;
-        const coin = coinSymbolMap[item.pair] || { cls: "coin-btc", glyph: "•" };
         const sign = isPos ? "+" : "-";
         const absAmt = formatNumber(Math.abs(item.amount), 2);
         const pctStr = `${isPos ? "+" : ""}${item.pct.toFixed(2)}%`;
@@ -260,10 +317,16 @@
         return `
           <div class="list-row">
             <div class="row-left">
-              <span class="coin-circle ${coin.cls}">${coin.glyph}</span>
+              <img
+                src="img/etereum.webp"
+                alt="Ethereum"
+                class="trade-eth-img"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';"
+              />
+              <span class="coin-circle" style="display:none;">Ξ</span>
               <div>
-                <div class="row-title">${item.pair}</div>
-                <div class="row-sub">${item.time}</div>
+                <div class="row-title">${item.title}</div>
+                <div class="row-sub">${item.detail}</div>
               </div>
             </div>
             <div class="row-right">
@@ -280,64 +343,61 @@
 
     const btn = $("#toggleAllTradesBtn");
     if (btn) {
-      btn.textContent = MOCK_STATE.showAllTrades ? "Ver menos ‹" : "Ver todo >";
+      btn.textContent = mockData.showAllTrades ? "Ver menos ‹" : "Ver todo >";
     }
   }
 
   function renderBalances() {
-    const hidden = MOCK_STATE.hiddenBalances;
+    const hidden = mockData.hiddenBalances;
     const mask = "••••••";
 
-    $("#userName").textContent = `Hola, ${MOCK_STATE.user.name}`;
-    $("#userIdText").textContent = MOCK_STATE.user.id;
+    $("#userName").textContent = `Hola, ${mockData.user.name}`;
+    $("#userIdText").textContent = mockData.user.id;
 
     $("#totalBalanceText").textContent = hidden
       ? `${mask} USDT`
-      : `${formatNumber(MOCK_STATE.balances.total, 2)} USDT`;
+      : `${formatNumber(mockData.balances.total, 2)} USDT`;
 
-    $("#totalDeltaText").textContent = `+${MOCK_STATE.balances.dailyDeltaPct.toFixed(2)}% hoy`;
+    $("#totalDeltaText").textContent = `+${mockData.balances.dailyDeltaPct.toFixed(2)}% hoy`;
 
     $("#frozenBalanceText").textContent = hidden
       ? mask
-      : formatNumber(MOCK_STATE.balances.frozen, 2);
+      : formatNumber(mockData.balances.frozen, 2);
 
     $("#withdrawableBalanceText").textContent = hidden
       ? mask
-      : formatNumber(MOCK_STATE.balances.withdrawable, 2);
+      : formatNumber(mockData.balances.withdrawable, 2);
 
-    $("#dailyYieldText").textContent = `+${MOCK_STATE.balances.dailyYieldPct.toFixed(2)}%`;
+    $("#dailyYieldText").textContent = `+${mockData.balances.dailyYieldPct.toFixed(2)}%`;
 
     $("#walletAvailableText").textContent = hidden
       ? `${mask} USDT`
-      : `${formatNumber(MOCK_STATE.balances.availableWallet, 2)} USDT`;
+      : `${formatNumber(mockData.balances.availableWallet, 2)} USDT`;
 
     $("#walletUsdEquivText").textContent = hidden
       ? `≈ ${mask} USD`
-      : `≈ ${formatNumber(MOCK_STATE.balances.availableWallet, 2)} USD`;
+      : `≈ ${formatNumber(mockData.balances.availableWallet, 2)} USD`;
 
     $("#withdrawAvailableText").textContent = hidden
       ? `${mask} USDT`
-      : `${formatNumber(MOCK_STATE.balances.availableWallet, 2)} USDT`;
+      : `${formatNumber(mockData.balances.availableWallet, 2)} USDT`;
   }
 
-  // ------------------------------------------------------------------------
-  // Renderizado: Referidos
-  // ------------------------------------------------------------------------
   function renderReferralsView() {
-    $("#referralLinkInput").value = MOCK_STATE.user.referralLink;
-    $("#totalReferralsCount").textContent = String(MOCK_STATE.referralStats.total);
-    $("#activeReferralsCount").textContent = String(MOCK_STATE.referralStats.active);
-    $("#referralCommissionsText").textContent = formatNumber(MOCK_STATE.referralStats.commissions, 2);
+    $("#referralLinkInput").value = mockData.user.referralLink;
+    $("#totalReferralsCount").textContent = String(mockData.referralStats.total);
+    $("#activeReferralsCount").textContent = String(mockData.referralStats.active);
+    $("#referralCommissionsText").textContent = formatNumber(mockData.referralStats.commissions, 2);
 
-    const list = MOCK_STATE.showAllReferrals
-      ? MOCK_STATE.referrals
-      : MOCK_STATE.referrals.slice(0, 5);
+    const list = mockData.showAllReferrals
+      ? mockData.referrals
+      : mockData.referrals.slice(0, 4);
 
     $("#referralsListContainer").innerHTML = list
       .map((ref) => `
         <div class="list-row">
           <div class="row-left">
-            <span class="coin-circle coin-eth">@</span>
+            <span class="coin-circle">@</span>
             <div>
               <div class="ref-handle">${ref.handle}</div>
               <div class="row-sub">${ref.timeAgo}</div>
@@ -350,15 +410,12 @@
 
     const toggleBtn = $("#toggleAllReferralsBtn");
     if (toggleBtn) {
-      toggleBtn.textContent = MOCK_STATE.showAllReferrals ? "Ver menos ‹" : "Ver todos >";
+      toggleBtn.textContent = mockData.showAllReferrals ? "Ver menos ‹" : "Ver todos >";
     }
   }
 
-  // ------------------------------------------------------------------------
-  // Renderizado: Billetera, Depósito (QR) y Retiro
-  // ------------------------------------------------------------------------
   function syncNetworkSelectors(network) {
-    MOCK_STATE.selectedNetwork = network;
+    mockData.selectedNetwork = network;
     ["#walletNetworksGrid", "#depositNetworksGrid", "#withdrawNetworksGrid"].forEach((gridSel) => {
       const grid = $(gridSel);
       if (!grid) return;
@@ -372,9 +429,9 @@
     const container = $("#txListContainer");
     if (!container) return;
 
-    const list = MOCK_STATE.showAllTx
-      ? MOCK_STATE.transactions
-      : MOCK_STATE.transactions.slice(0, 4);
+    const list = mockData.showAllTx
+      ? mockData.transactions
+      : mockData.transactions.slice(0, 4);
 
     container.innerHTML = list
       .map((tx) => {
@@ -405,11 +462,10 @@
 
     const toggleBtn = $("#toggleAllTxBtn");
     if (toggleBtn) {
-      toggleBtn.textContent = MOCK_STATE.showAllTx ? "Ver menos ‹" : "Ver todo >";
+      toggleBtn.textContent = mockData.showAllTx ? "Ver menos ‹" : "Ver todo >";
     }
   }
 
-  // Generador de matriz QR visual limpio en Canvas a partir de la dirección
   function drawQrMatrix(address) {
     const canvas = $("#depositQrCanvas");
     if (!canvas) return;
@@ -421,7 +477,6 @@
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Semilla determinista basada en la dirección
     let seed = 0;
     for (let i = 0; i < address.length; i++) {
       seed = (seed * 31 + address.charCodeAt(i)) >>> 0;
@@ -457,8 +512,8 @@
   }
 
   function renderDepositPanel() {
-    const net = MOCK_STATE.selectedNetwork;
-    const addr = MOCK_STATE.depositAddresses[net] || MOCK_STATE.depositAddresses.TRC20;
+    const net = mockData.selectedNetwork;
+    const addr = mockData.depositAddresses[net] || mockData.depositAddresses.TRC20;
     $("#depositAddressTitle").textContent = `Dirección de depósito (${net})`;
     $("#depositAddressValue").textContent = addr;
     drawQrMatrix(`${net}:${addr}`);
@@ -466,34 +521,30 @@
 
   function updateWithdrawCalc() {
     const rawVal = parseFloat($("#withdrawAmountInput").value);
-    const fee = MOCK_STATE.withdrawFeeUsdt;
+    const fee = mockData.withdrawFeeUsdt; // 0.15 USDT
+
+    $("#withdrawFeeText").textContent = `${fee.toFixed(2)} USDT`;
 
     if (Number.isNaN(rawVal) || rawVal <= 0) {
       $("#withdrawReceiveText").textContent = "0.00 USDT";
-      $("#withdrawFeeText").textContent = `${formatNumber(fee, 0)} USDT`;
       return;
     }
 
     const netReceive = Math.max(0, rawVal - fee);
     $("#withdrawReceiveText").textContent = `${formatNumber(netReceive, 2)} USDT`;
-    $("#withdrawFeeText").textContent = `${formatNumber(fee, 0)} USDT`;
   }
 
-  // ------------------------------------------------------------------------
-  // Bind de Eventos
-  // ------------------------------------------------------------------------
   function bindEvents() {
-    // Barra inferior
     $$(".nav-tab").forEach((tab) => {
       tab.addEventListener("click", () => {
         navigateTo(tab.dataset.target);
       });
     });
 
-    // Botón superior izquierdo (Cerrar en raíz / Volver en subvistas)
     $("#btnTopLeft").addEventListener("click", () => {
-      if (MOCK_STATE.activeTab === "deposit" || MOCK_STATE.activeTab === "withdraw") {
-        navigateTo(MOCK_STATE.previousMainTab || "wallet");
+      closeThreeDotsMenu();
+      if (mockData.activeTab === "deposit" || mockData.activeTab === "withdraw") {
+        navigateTo(mockData.previousMainTab || "wallet");
       } else if (tg && typeof tg.close === "function") {
         tg.close();
       } else {
@@ -502,31 +553,55 @@
     });
 
     $("#btnRefreshApp").addEventListener("click", () => {
+      closeThreeDotsMenu();
       renderBalances();
       renderTradesList();
       renderReferralsView();
       renderTransactionsList();
-      showToast("Datos mock sincronizados");
+      showToast("Datos sincronizados");
     });
 
-    $("#btnMoreInfo").addEventListener("click", () => {
-      showToast("CipherX v1.0 · Fase 1 (UI Mock)");
+    // Menú de 3 puntos (id="btnMenu")
+    $("#btnMenu").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const menu = $("#threeDotsMenu");
+      const isOpen = menu.classList.toggle("open");
+      menu.setAttribute("aria-hidden", String(!isOpen));
+      $("#btnMenu").setAttribute("aria-expanded", String(isOpen));
     });
 
-    // Copiar ID de usuario
+    $$("#threeDotsMenu .dropdown-item").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openInfoModal(btn.dataset.modal);
+      });
+    });
+
+    $("#closeInfoModalBtn").addEventListener("click", closeInfoModal);
+    $("#infoModalBackdrop").addEventListener("click", (e) => {
+      if (e.target === $("#infoModalBackdrop")) {
+        closeInfoModal();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const menu = $("#threeDotsMenu");
+      if (menu && menu.classList.contains("open") && !e.target.closest("#threeDotsMenu") && !e.target.closest("#btnMenu")) {
+        closeThreeDotsMenu();
+      }
+    });
+
     $("#copyUserIdBtn").addEventListener("click", () => {
-      copyToClipboard(MOCK_STATE.user.id, `ID ${MOCK_STATE.user.id} copiado`);
+      copyToClipboard(mockData.user.id, `ID ${mockData.user.id} copiado`);
     });
 
-    // Ocultar / mostrar saldos
     const toggleEye = () => {
-      MOCK_STATE.hiddenBalances = !MOCK_STATE.hiddenBalances;
+      mockData.hiddenBalances = !mockData.hiddenBalances;
       renderBalances();
     };
     $("#toggleBalanceVisibility").addEventListener("click", toggleEye);
     $("#toggleWalletVisibility").addEventListener("click", toggleEye);
 
-    // Temporalidad del gráfico
     $$(".tf-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         $$(".tf-btn").forEach((b) => b.classList.remove("active"));
@@ -535,37 +610,34 @@
       });
     });
 
-    // Banner IA -> lleva a Billetera o muestra info
     $("#openAiInfoBtn").addEventListener("click", () => {
-      showToast("Estrategia automática activa (80/20 · 0.6%–0.9% diario)");
+      showToast("Operativa automática en Ethereum · Futuros y Apalancamiento");
     });
 
-    // Ver todo / ver menos en listas
     $("#toggleAllTradesBtn").addEventListener("click", () => {
-      MOCK_STATE.showAllTrades = !MOCK_STATE.showAllTrades;
+      mockData.showAllTrades = !mockData.showAllTrades;
       renderTradesList();
     });
 
     $("#toggleAllReferralsBtn").addEventListener("click", () => {
-      MOCK_STATE.showAllReferrals = !MOCK_STATE.showAllReferrals;
+      mockData.showAllReferrals = !mockData.showAllReferrals;
       renderReferralsView();
     });
 
     $("#toggleAllTxBtn").addEventListener("click", () => {
-      MOCK_STATE.showAllTx = !MOCK_STATE.showAllTx;
+      mockData.showAllTx = !mockData.showAllTx;
       renderTransactionsList();
     });
 
-    // Referidos: copiar enlace y compartir en Telegram
     $("#copyReferralLinkBtn").addEventListener("click", () => {
-      copyToClipboard(MOCK_STATE.user.referralLink, "Enlace de referido copiado");
+      copyToClipboard(mockData.user.referralLink, "Enlace de referido copiado");
     });
 
     $("#shareTelegramBtn").addEventListener("click", () => {
       const shareText = encodeURIComponent(
-        `Únete a CipherX y comienza con copy trading automatizado: ${MOCK_STATE.user.referralLink}`
+        `Únete a CipherX y comienza con copy trading automatizado: ${mockData.user.referralLink}`
       );
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(MOCK_STATE.user.referralLink)}&text=${shareText}`;
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(mockData.user.referralLink)}&text=${shareText}`;
 
       if (tg && typeof tg.openTelegramLink === "function") {
         tg.openTelegramLink(shareUrl);
@@ -574,11 +646,9 @@
       }
     });
 
-    // Billetera: ir a Depositar / Retirar
     $("#goToDepositBtn").addEventListener("click", () => navigateTo("deposit"));
     $("#goToWithdrawBtn").addEventListener("click", () => navigateTo("withdraw"));
 
-    // Selección de red en Billetera, Depósito y Retiro
     ["#walletNetworksGrid", "#depositNetworksGrid", "#withdrawNetworksGrid"].forEach((gridSel) => {
       const grid = $(gridSel);
       if (!grid) return;
@@ -586,25 +656,23 @@
         const card = e.target.closest(".network-card");
         if (!card) return;
         syncNetworkSelectors(card.dataset.network);
-        if (MOCK_STATE.activeTab === "deposit") {
+        if (mockData.activeTab === "deposit") {
           renderDepositPanel();
         }
         showToast(`Red ${card.dataset.network} seleccionada`);
       });
     });
 
-    // Depósito: copiar dirección y confirmar
     $("#copyDepositAddressBtn").addEventListener("click", () => {
-      const net = MOCK_STATE.selectedNetwork;
-      const addr = MOCK_STATE.depositAddresses[net];
+      const net = mockData.selectedNetwork;
+      const addr = mockData.depositAddresses[net];
       copyToClipboard(addr, `Dirección ${net} copiada`);
     });
 
     $("#confirmDepositBtn").addEventListener("click", () => {
-      showToast(`Aviso registrado (${MOCK_STATE.selectedNetwork}). Mínimo 10 USDT.`);
+      showToast(`Aviso registrado (${mockData.selectedNetwork}). Mínimo 10 USDT.`);
     });
 
-    // Retiro: pegar dirección, botón Máximo, cálculo en vivo y envío mock
     $("#pasteAddressBtn").addEventListener("click", async () => {
       try {
         if (navigator.clipboard && navigator.clipboard.readText) {
@@ -622,7 +690,7 @@
     });
 
     $("#withdrawMaxBtn").addEventListener("click", () => {
-      const maxVal = MOCK_STATE.balances.availableWallet.toFixed(2);
+      const maxVal = mockData.balances.availableWallet.toFixed(2);
       $("#withdrawAmountInput").value = maxVal;
       updateWithdrawCalc();
     });
@@ -637,31 +705,30 @@
         showToast("Ingresa una dirección de billetera válida");
         return;
       }
-      if (Number.isNaN(amount) || amount < MOCK_STATE.minWithdrawUsdt) {
-        showToast(`El monto mínimo de retiro es ${MOCK_STATE.minWithdrawUsdt} USDT`);
+      if (Number.isNaN(amount) || amount < mockData.minWithdrawUsdt) {
+        showToast(`El monto mínimo de retiro es ${mockData.minWithdrawUsdt} USDT`);
         return;
       }
-      if (amount > MOCK_STATE.balances.availableWallet) {
+      if (amount > mockData.balances.availableWallet) {
         showToast("Saldo disponible insuficiente");
         return;
       }
 
-      // Simulación local en Fase 1
-      MOCK_STATE.balances.availableWallet = Number(
-        (MOCK_STATE.balances.availableWallet - amount).toFixed(2)
+      mockData.balances.availableWallet = Number(
+        (mockData.balances.availableWallet - amount).toFixed(2)
       );
-      MOCK_STATE.balances.withdrawable = Math.max(
+      mockData.balances.withdrawable = Math.max(
         0,
-        Number((MOCK_STATE.balances.withdrawable - amount).toFixed(2))
+        Number((mockData.balances.withdrawable - amount).toFixed(2))
       );
-      MOCK_STATE.balances.total = Number(
-        (MOCK_STATE.balances.frozen + MOCK_STATE.balances.withdrawable).toFixed(2)
+      mockData.balances.total = Number(
+        (mockData.balances.frozen + mockData.balances.withdrawable).toFixed(2)
       );
 
-      MOCK_STATE.transactions.unshift({
+      mockData.transactions.unshift({
         type: "withdraw",
         label: "Retiro",
-        date: "Ahora · Revisión manual",
+        date: "Ahora · En lote (hasta 24h)",
         amount: -amount,
         status: "Pendiente",
       });
@@ -672,14 +739,11 @@
       renderBalances();
       renderTransactionsList();
 
-      showToast("Solicitud de retiro enviada (revisión hasta 24h)");
+      showToast("Retiro encolado en lote (hasta 24 horas)");
       navigateTo("wallet");
     });
   }
 
-  // ------------------------------------------------------------------------
-  // Arranque
-  // ------------------------------------------------------------------------
   document.addEventListener("DOMContentLoaded", () => {
     initTelegramBridge();
     renderBalances();
@@ -687,7 +751,7 @@
     renderTradesList();
     renderReferralsView();
     renderTransactionsList();
-    syncNetworkSelectors(MOCK_STATE.selectedNetwork);
+    syncNetworkSelectors(mockData.selectedNetwork);
     updateWithdrawCalc();
     bindEvents();
   });
