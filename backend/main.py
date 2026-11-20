@@ -1,8 +1,9 @@
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+import random
 from typing import List, Literal, Optional
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Column, BigInteger, String, Numeric, DateTime, ForeignKey, func
@@ -70,11 +71,78 @@ MIN_WITHDRAW_USDT = Decimal("5.000000")
 WITHDRAW_FEE_USDT = Decimal("0.150000")
 REFERRAL_BONUS_CONGELADO = Decimal("1.000000")
 REFERRAL_DEPOSIT_COMMISSION_RATE = Decimal("0.12")
+
+DAILY_MIN_RETURN_PCT = Decimal("0.006")   # 0.6%
+DAILY_MAX_RETURN_PCT = Decimal("0.009")   # 0.9%
+WIN_RATE_TARGET = 0.80                    # 80% ganadas / 20% perdidas
+TRADE_PAIR_ETH = "ETH/USDT"               # Solo Ethereum
+TRADE_SIDES = ["long", "short"]           # Largo y corto en ETH
+ETH_LEVERAGE_OPTIONS = [5, 10, 20, 25]
+
 SIX_DECIMALS = Decimal("0.000001")
 
 
 def quantize_usdt(value: Decimal) -> Decimal:
     return value.quantize(SIX_DECIMALS, rounding=ROUND_HALF_UP)
+
+
+def generate_daily_trades_amounts(capital_base: Decimal, num_trades: int = 5) -> List[Decimal]:
+    """
+    Genera `num_trades` resultados (ganancias positivas y pérdidas negativas)
+    respetando 80% ganadas / 20% perdidas y una suma diaria dentro de [0.6%, 0.9%]
+    del `capital_base`.
+    """
+    daily_pct = Decimal(str(round(random.uniform(float(DAILY_MIN_RETURN_PCT), float(DAILY_MAX_RETURN_PCT)), 6)))
+    target_net_profit = quantize_usdt(capital_base * daily_pct)
+
+    if num_trades <= 1 or target_net_profit <= Decimal("0.000000"):
+        return [target_net_profit]
+
+    win_count = max(1, int(round(num_trades * WIN_RATE_TARGET)))
+    loss_count = max(0, num_trades - win_count)
+    if loss_count == 0 and num_trades >= 5:
+        win_count = num_trades - 1
+        loss_count = 1
+
+    outcomes = ["win"] * win_count + ["loss"] * loss_count
+    random.shuffle(outcomes)
+
+    raw_weights = [Decimal(str(round(random.uniform(0.6, 1.4), 4))) for _ in outcomes]
+    weight_sum = sum(raw_weights)
+    normalized = [w / weight_sum for w in raw_weights]
+
+    loss_budget = quantize_usdt(target_net_profit * Decimal("0.15")) if loss_count > 0 else Decimal("0.000000")
+    win_budget = quantize_usdt(target_net_profit + loss_budget)
+
+    loss_indices = [i for i, o in enumerate(outcomes) if o == "loss"]
+    win_indices = [i for i, o in enumerate(outcomes) if o == "win"]
+
+    results: List[Decimal] = [Decimal("0.000000")] * num_trades
+
+    if loss_indices:
+        l_weights = [normalized[i] for i in loss_indices]
+        l_sum = sum(l_weights)
+        acum_loss = Decimal("0.000000")
+        for idx_pos, i in enumerate(loss_indices):
+            if idx_pos == len(loss_indices) - 1:
+                val = quantize_usdt(loss_budget - acum_loss)
+            else:
+                val = quantize_usdt(loss_budget * (l_weights[idx_pos] / l_sum))
+                acum_loss = quantize_usdt(acum_loss + val)
+            results[i] = -abs(val)
+
+    w_weights = [normalized[i] for i in win_indices]
+    w_sum = sum(w_weights)
+    acum_win = Decimal("0.000000")
+    for idx_pos, i in enumerate(win_indices):
+        if idx_pos == len(win_indices) - 1:
+            val = quantize_usdt(win_budget - acum_win)
+        else:
+            val = quantize_usdt(win_budget * (w_weights[idx_pos] / w_sum))
+            acum_win = quantize_usdt(acum_win + val)
+        results[i] = abs(val)
+
+    return results
 
 
 # ==========================================================================
@@ -150,6 +218,26 @@ class TransactionOut(BaseModel):
     fecha: datetime
 
 
+class TradeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    par: str
+    tipo: str
+    monto: Decimal
+    resultado: Decimal
+    apalancamiento: int = 10
+    fecha: datetime
+
+
+class TradeBatchOut(BaseModel):
+    telegram_id: int
+    operaciones_generadas: int
+    ganancia_neta_tanda: Decimal
+    nuevo_saldo_retirable: Decimal
+    trades: List[TradeOut]
+
+
 def build_user_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
@@ -168,7 +256,7 @@ def build_user_out(user: User) -> UserOut:
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.2.4")
+app = FastAPI(title="CipherX API", version="0.2.7")
 
 app.add_middleware(
     CORSMiddleware,
@@ -181,7 +269,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "2A-withdrawals-flow"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "2-complete-eth-only"}
 
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -373,6 +461,93 @@ def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(tx)
     return tx
+
+
+@app.post("/api/trades/generate/{telegram_id}", response_model=TradeBatchOut, status_code=status.HTTP_201_CREATED)
+def generate_trades_for_user(
+    telegram_id: int,
+    num_trades: int = Query(default=5, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    capital_base = Decimal(user.saldo_congelado) + Decimal(user.saldo_retirable)
+    if capital_base <= Decimal("0.000000"):
+        capital_base = Decimal("100.000000")
+
+    resultados = generate_daily_trades_amounts(capital_base=capital_base, num_trades=num_trades)
+    monto_operacion = quantize_usdt(capital_base / Decimal(str(num_trades)))
+
+    created_trades: List[TradeOut] = []
+    net_gain = Decimal("0.000000")
+
+    # Alternamos/mezclamos largo y corto exclusivamente en ETH/USDT
+    sides = [TRADE_SIDES[i % len(TRADE_SIDES)] for i in range(num_trades)]
+    random.shuffle(sides)
+
+    for idx, res in enumerate(resultados):
+        lev = random.choice(ETH_LEVERAGE_OPTIONS)
+        trade = Trade(
+            user_id=user.id,
+            par=TRADE_PAIR_ETH,
+            tipo=sides[idx],
+            monto=monto_operacion,
+            resultado=res,
+        )
+        db.add(trade)
+        db.flush()
+        created_trades.append(
+            TradeOut(
+                id=trade.id,
+                par=trade.par,
+                tipo=trade.tipo,
+                monto=trade.monto,
+                resultado=trade.resultado,
+                apalancamiento=lev,
+                fecha=trade.fecha,
+            )
+        )
+        net_gain = quantize_usdt(net_gain + res)
+
+    user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable) + net_gain)
+    db.commit()
+    db.refresh(user)
+
+    return TradeBatchOut(
+        telegram_id=user.telegram_id,
+        operaciones_generadas=len(created_trades),
+        ganancia_neta_tanda=net_gain,
+        nuevo_saldo_retirable=user.saldo_retirable,
+        trades=created_trades,
+    )
+
+
+@app.get("/api/trades/{telegram_id}", response_model=List[TradeOut])
+def get_user_trades(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    trades = (
+        db.query(Trade)
+        .filter(Trade.user_id == user.id)
+        .order_by(Trade.fecha.desc(), Trade.id.desc())
+        .all()
+    )
+    return [
+        TradeOut(
+            id=t.id,
+            par=TRADE_PAIR_ETH,
+            tipo=t.tipo,
+            monto=t.monto,
+            resultado=t.resultado,
+            apalancamiento=random.choice(ETH_LEVERAGE_OPTIONS),
+            fecha=t.fecha,
+        )
+        for t in trades
+    ]
 
 
 @app.get("/api/transactions/{telegram_id}", response_model=List[TransactionOut])
