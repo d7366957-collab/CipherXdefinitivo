@@ -1608,3 +1608,13 @@ body {
   transform: none !important;
   display: block !important;
 }
+#view-deposit .promo-coin-centered-wrap,
+#view-withdraw .withdraw-coin-centered-wrap {
+  background: transparent !important;
+}
+
+#view-deposit .coin-large-img,
+#view-withdraw .coin-large-img {
+  background: transparent !important;
+  mix-blend-mode: screen !important;
+}
