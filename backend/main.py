@@ -1,6 +1,6 @@
 from datetime import datetime
-from decimal import Decimal
-from typing import Optional
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Literal, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +62,20 @@ class Trade(Base):
 
 
 # ==========================================================================
+# Reglas y Constantes de Negocio
+# ==========================================================================
+
+MIN_DEPOSIT_USDT = Decimal("10.000000")
+REFERRAL_BONUS_CONGELADO = Decimal("1.000000")
+REFERRAL_DEPOSIT_COMMISSION_RATE = Decimal("0.12")
+SIX_DECIMALS = Decimal("0.000001")
+
+
+def quantize_usdt(value: Decimal) -> Decimal:
+    return value.quantize(SIX_DECIMALS, rounding=ROUND_HALF_UP)
+
+
+# ==========================================================================
 # Esquemas Pydantic
 # ==========================================================================
 
@@ -86,6 +100,24 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class DepositWebhookIn(BaseModel):
+    telegram_id: int = Field(..., gt=0)
+    monto: Decimal = Field(..., gt=0)
+    red: Literal["TON", "TRC20", "BEP20"]
+    tx_hash: Optional[str] = Field(default=None, max_length=255)
+
+
+class DepositOut(BaseModel):
+    transaction_id: int
+    telegram_id: int
+    red: str
+    monto_depositado: Decimal
+    comision_patrocinador_retirable: Decimal
+    nuevo_saldo_retirable_usuario: Decimal
+    nuevo_saldo_congelado_usuario: Decimal
+    estado: str
+
+
 def build_user_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
@@ -104,7 +136,7 @@ def build_user_out(user: User) -> UserOut:
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.2.1")
+app = FastAPI(title="CipherX API", version="0.2.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -114,12 +146,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-REFERRAL_BONUS_CONGELADO = Decimal("1.000000")
-
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "2A"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "2A-deposits"}
 
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -148,19 +178,80 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
     db.flush()
 
     if sponsor:
-        sponsor.saldo_congelado = Decimal(sponsor.saldo_congelado) + REFERRAL_BONUS_CONGELADO
-        bono_tx = Transaction(
-            user_id=sponsor.id,
-            tipo="bono",
-            monto=REFERRAL_BONUS_CONGELADO,
-            red=None,
-            estado="completado",
+        sponsor.saldo_congelado = quantize_usdt(Decimal(sponsor.saldo_congelado) + REFERRAL_BONUS_CONGELADO)
+        db.add(
+            Transaction(
+                user_id=sponsor.id,
+                tipo="bono",
+                monto=REFERRAL_BONUS_CONGELADO,
+                red=None,
+                estado="completado",
+            )
         )
-        db.add(bono_tx)
 
     db.commit()
     db.refresh(new_user)
     return build_user_out(new_user)
+
+
+@app.post("/api/deposit/webhook", response_model=DepositOut, status_code=status.HTTP_201_CREATED)
+def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get_db)):
+    monto_q = quantize_usdt(payload.monto)
+    if monto_q < MIN_DEPOSIT_USDT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El depósito mínimo es de 10 USDT",
+        )
+
+    user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable) + monto_q)
+
+    deposit_tx = Transaction(
+        user_id=user.id,
+        tipo="deposito",
+        monto=monto_q,
+        red=payload.red,
+        estado="completado",
+    )
+    db.add(deposit_tx)
+    db.flush()
+
+    comision_patrocinador = Decimal("0.000000")
+    if user.id_patrocinador:
+        sponsor = db.query(User).filter(User.telegram_id == user.id_patrocinador).first()
+        if sponsor:
+            comision_patrocinador = quantize_usdt(monto_q * REFERRAL_DEPOSIT_COMMISSION_RATE)
+            sponsor.saldo_retirable = quantize_usdt(Decimal(sponsor.saldo_retirable) + comision_patrocinador)
+            db.add(
+                Transaction(
+                    user_id=sponsor.id,
+                    tipo="comision",
+                    monto=comision_patrocinador,
+                    red=payload.red,
+                    estado="completado",
+                )
+            )
+
+    db.commit()
+    db.refresh(user)
+    db.refresh(deposit_tx)
+
+    return DepositOut(
+        transaction_id=deposit_tx.id,
+        telegram_id=user.telegram_id,
+        red=payload.red,
+        monto_depositado=monto_q,
+        comision_patrocinador_retirable=comision_patrocinador,
+        nuevo_saldo_retirable_usuario=user.saldo_retirable,
+        nuevo_saldo_congelado_usuario=user.saldo_congelado,
+        estado=deposit_tx.estado,
+    )
 
 
 @app.get("/api/user/{telegram_id}", response_model=UserOut)
