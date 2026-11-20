@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +38,7 @@ class Transaction(Base):
     tipo = Column(String(20), nullable=False)       # deposito | retiro | comision | bono
     monto = Column(Numeric(18, 6), nullable=False)
     red = Column(String(16), nullable=True)         # TON | TRC20 | BEP20
-    estado = Column(String(24), nullable=False, default="pendiente")
+    estado = Column(String(24), nullable=False, default="procesando")
     fecha = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="transactions")
@@ -66,6 +66,8 @@ class Trade(Base):
 # ==========================================================================
 
 MIN_DEPOSIT_USDT = Decimal("10.000000")
+MIN_WITHDRAW_USDT = Decimal("5.000000")
+WITHDRAW_FEE_USDT = Decimal("0.150000")
 REFERRAL_BONUS_CONGELADO = Decimal("1.000000")
 REFERRAL_DEPOSIT_COMMISSION_RATE = Decimal("0.12")
 SIX_DECIMALS = Decimal("0.000001")
@@ -118,6 +120,36 @@ class DepositOut(BaseModel):
     estado: str
 
 
+class WithdrawRequestIn(BaseModel):
+    telegram_id: int = Field(..., gt=0)
+    monto: Decimal = Field(..., gt=0)
+    red: Literal["TON", "TRC20", "BEP20"]
+    wallet_destino: Optional[str] = Field(default=None, max_length=255)
+
+
+class WithdrawOut(BaseModel):
+    transaction_id: int
+    telegram_id: int
+    red: str
+    monto_solicitado: Decimal
+    comision_red: Decimal
+    total_descontado_retirable: Decimal
+    nuevo_saldo_retirable_usuario: Decimal
+    estado: str
+    tiempo_estimado: str
+
+
+class TransactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tipo: str
+    monto: Decimal
+    red: Optional[str] = None
+    estado: str
+    fecha: datetime
+
+
 def build_user_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
@@ -136,7 +168,7 @@ def build_user_out(user: User) -> UserOut:
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.2.2")
+app = FastAPI(title="CipherX API", version="0.2.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -149,7 +181,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "2A-deposits"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "2A-withdrawals-flow"}
 
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -185,7 +217,7 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
                 tipo="bono",
                 monto=REFERRAL_BONUS_CONGELADO,
                 red=None,
-                estado="completado",
+                estado="confirmado",
             )
         )
 
@@ -217,7 +249,7 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
         tipo="deposito",
         monto=monto_q,
         red=payload.red,
-        estado="completado",
+        estado="confirmado",
     )
     db.add(deposit_tx)
     db.flush()
@@ -234,7 +266,7 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
                     tipo="comision",
                     monto=comision_patrocinador,
                     red=payload.red,
-                    estado="completado",
+                    estado="confirmado",
                 )
             )
 
@@ -251,6 +283,109 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
         nuevo_saldo_retirable_usuario=user.saldo_retirable,
         nuevo_saldo_congelado_usuario=user.saldo_congelado,
         estado=deposit_tx.estado,
+    )
+
+
+@app.post("/api/withdraw/request", response_model=WithdrawOut, status_code=status.HTTP_201_CREATED)
+def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)):
+    monto_q = quantize_usdt(payload.monto)
+    if monto_q < MIN_WITHDRAW_USDT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El retiro mínimo es de 5 USDT",
+        )
+
+    user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    total_a_descontar = quantize_usdt(monto_q + WITHDRAW_FEE_USDT)
+    saldo_retirable_actual = Decimal(user.saldo_retirable)
+    if saldo_retirable_actual < total_a_descontar:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Saldo retirable insuficiente para cubrir el monto y la comisión de 0.15 USDT",
+        )
+
+    user.saldo_retirable = quantize_usdt(saldo_retirable_actual - total_a_descontar)
+
+    withdraw_tx = Transaction(
+        user_id=user.id,
+        tipo="retiro",
+        monto=monto_q,
+        red=payload.red,
+        estado="procesando",
+    )
+    db.add(withdraw_tx)
+    db.commit()
+    db.refresh(user)
+    db.refresh(withdraw_tx)
+
+    return WithdrawOut(
+        transaction_id=withdraw_tx.id,
+        telegram_id=user.telegram_id,
+        red=payload.red,
+        monto_solicitado=monto_q,
+        comision_red=WITHDRAW_FEE_USDT,
+        total_descontado_retirable=total_a_descontar,
+        nuevo_saldo_retirable_usuario=user.saldo_retirable,
+        estado=withdraw_tx.estado,
+        tiempo_estimado="Procesando en lote (hasta 24 horas)",
+    )
+
+
+@app.post("/api/admin/withdraw/{transaction_id}/approve", response_model=TransactionOut)
+def approve_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.tipo == "retiro").first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retiro no encontrado")
+    if tx.estado != "procesando":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El retiro ya está en estado '{tx.estado}'",
+        )
+    tx.estado = "confirmado"
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@app.post("/api/admin/withdraw/{transaction_id}/reject", response_model=TransactionOut)
+def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.tipo == "retiro").first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retiro no encontrado")
+    if tx.estado != "procesando":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El retiro ya está en estado '{tx.estado}'",
+        )
+
+    user = db.query(User).filter(User.id == tx.user_id).first()
+    if user:
+        reembolso = quantize_usdt(Decimal(tx.monto) + WITHDRAW_FEE_USDT)
+        user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable) + reembolso)
+
+    tx.estado = "rechazado"
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@app.get("/api/transactions/{telegram_id}", response_model=List[TransactionOut])
+def get_user_transactions(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    return (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id)
+        .order_by(Transaction.fecha.desc(), Transaction.id.desc())
+        .all()
     )
 
 
