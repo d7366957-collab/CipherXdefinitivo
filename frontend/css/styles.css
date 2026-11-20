@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CipherX Mini App — Estilos Visuales (Fase 1 · Ajustes de Precisión)
+   CipherX Mini App — Estilos Visuales (Ajustes Finales de Diseño)
    ========================================================================== */
 
 :root {
@@ -62,7 +62,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Topbar estilo Mini App
+   Topbar y Menú Desplegable de los 3 Puntos
    -------------------------------------------------------------------------- */
 .tg-topbar {
   height: var(--topbar-height);
@@ -72,8 +72,8 @@ body {
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 30;
-  background: rgba(7, 16, 21, 0.85);
+  z-index: 40;
+  background: rgba(7, 16, 21, 0.88);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -134,6 +134,45 @@ body {
   cursor: pointer;
 }
 
+.top-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(var(--topbar-height) - 2px);
+  right: 14px;
+  width: 215px;
+  background: #15171c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  z-index: 60;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.65);
+}
+
+.top-dropdown.open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover,
+.dropdown-item:active {
+  background: rgba(26, 228, 182, 0.12);
+  color: var(--accent-mint);
+}
+
 /* --------------------------------------------------------------------------
    Contenedor de vistas
    -------------------------------------------------------------------------- */
@@ -183,21 +222,13 @@ body {
 .mt-14 { margin-top: 14px; }
 .full-width { width: 100%; }
 
-/* Efecto 3D / brillo en íconos de tarjetas */
 .icon-3d {
-  filter: drop-shadow(0 3px 6px rgba(26, 228, 182, 0.28)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 3px 6px rgba(26, 228, 182, 0.3)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
 }
 
 .svg-3d {
   flex-shrink: 0;
   display: inline-block;
-}
-
-.banner-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 /* --------------------------------------------------------------------------
@@ -434,7 +465,7 @@ body {
   position: relative;
   overflow: hidden;
   width: 100%;
-  min-height: 82px;
+  min-height: 92px;
   padding: 14px 16px;
   display: flex;
   align-items: center;
@@ -460,8 +491,8 @@ body {
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(7, 18, 24, 0.94) 0%,
-    rgba(9, 28, 36, 0.78) 56%,
+    rgba(7, 18, 24, 0.95) 0%,
+    rgba(9, 28, 36, 0.82) 58%,
     rgba(9, 28, 36, 0.25) 100%
   );
   z-index: 1;
@@ -545,6 +576,15 @@ body {
   min-width: 0;
 }
 
+.trade-eth-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(114, 137, 218, 0.14);
+}
+
 .coin-circle {
   width: 32px;
   height: 32px;
@@ -555,20 +595,9 @@ body {
   font-size: 13px;
   font-weight: 800;
   flex-shrink: 0;
+  background: rgba(114, 137, 218, 0.18);
+  color: #8fa6ff;
 }
-
-.crypto-icon-img {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  display: block;
-  object-fit: contain;
-}
-
-.coin-btc { background: rgba(247, 147, 26, 0.16); color: #f7931a; }
-.coin-eth { background: rgba(114, 137, 218, 0.18); color: #8fa6ff; }
-.coin-sol { background: rgba(20, 241, 149, 0.15); color: #14f195; }
-.coin-bnb { background: rgba(243, 186, 47, 0.16); color: #f3ba2f; }
 
 .row-title {
   font-size: 13px;
@@ -603,19 +632,44 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   VISTA 2: REFERIDOS
+   VISTA 2: REFERIDOS (Banner superior de lado a lado)
    -------------------------------------------------------------------------- */
-.hero-split-header {
+.referral-top-banner {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 132px;
+  padding: 14px 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 10px;
-  margin-bottom: 12px;
+  align-items: flex-end;
+  background: #091d26;
 }
 
-.hero-split-copy {
-  flex: 1;
-  min-width: 0;
+.referral-top-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.referral-top-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(7, 17, 22, 0.92) 0%,
+    rgba(7, 17, 22, 0.72) 58%,
+    rgba(7, 17, 22, 0.28) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.referral-top-banner-content {
+  position: relative;
+  z-index: 2;
 }
 
 .page-hero-title {
@@ -631,30 +685,12 @@ body {
 }
 
 .hero-micro-note {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 8px;
   font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.3;
-}
-
-.referral-banner-box {
-  width: 146px;
-  min-height: 104px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  background: #0b232d;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.art-3d-fallback {
-  font-size: 46px;
+  color: #c7dde6;
 }
 
 .benefits-grid {
@@ -666,6 +702,8 @@ body {
 
 .benefit-card {
   padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .benefit-top {
@@ -700,6 +738,13 @@ body {
   font-size: 11.5px;
   color: var(--text-secondary);
   margin-top: 1px;
+}
+
+.benefit-explain {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 7px;
+  line-height: 1.35;
 }
 
 .referral-box-card {
@@ -785,23 +830,44 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   VISTA 3: BILLETERA
+   VISTA 3: BILLETERA (Banner ancho completo + Imágenes de red)
    -------------------------------------------------------------------------- */
-.wallet-header {
-  align-items: center;
+.wallet-full-banner {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 136px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-end;
+  background: #091d26;
 }
 
-.wallet-banner-box {
-  width: 148px;
-  height: 92px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  background: #0b232d;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.wallet-full-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.wallet-full-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(7, 17, 22, 0.92) 0%,
+    rgba(7, 17, 22, 0.72) 56%,
+    rgba(7, 17, 22, 0.25) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.wallet-full-banner-copy {
+  position: relative;
+  z-index: 2;
 }
 
 .wallet-balance-card {
@@ -859,7 +925,7 @@ body {
   cursor: pointer;
 }
 
-/* Redes TON / TRC20 / BEP20 */
+/* Redes TON / TRC20 / BEP20 con imágenes reales */
 .networks-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -867,13 +933,13 @@ body {
 }
 
 .network-card {
-  height: 62px;
+  height: 70px;
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
   color: var(--text-primary);
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -885,14 +951,12 @@ body {
   box-shadow: inset 0 0 0 1px rgba(30, 227, 183, 0.25);
 }
 
-.net-badge {
-  font-size: 14px;
-  font-weight: 800;
+.net-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
 }
-
-.net-ton { color: #38bdf8; }
-.net-trc20 { color: #ef4444; }
-.net-bep20 { color: #facc15; }
 
 .net-name {
   font-size: 12px;
@@ -957,7 +1021,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   VISTA 4: DEPOSITAR USDT
+   VISTA 4 & 5: DEPOSITAR Y RETIRAR (Monedas grandes y centradas)
    -------------------------------------------------------------------------- */
 .subview-header {
   margin-bottom: 12px;
@@ -1068,6 +1132,7 @@ body {
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.35;
+  flex-shrink: 0;
 }
 
 .notice-text {
@@ -1076,17 +1141,18 @@ body {
   line-height: 1.4;
 }
 
-.promo-footer-card {
-  padding: 10px 14px;
+.promo-centered-card {
+  padding: 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 16px;
 }
 
-.promo-coin-wrap {
-  width: 92px;
-  height: 68px;
-  border-radius: 10px;
+.promo-coin-centered-wrap {
+  width: 96px;
+  height: 80px;
+  border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
   display: flex;
@@ -1094,16 +1160,29 @@ body {
   justify-content: center;
 }
 
-.promo-coin-fallback {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  background: #16a384;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 800;
+.withdraw-hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.withdraw-coin-centered-wrap {
+  width: 96px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.coin-large-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .promo-title {
@@ -1134,39 +1213,6 @@ body {
 .btn-primary-gradient:active,
 .btn-deposit:active {
   opacity: 0.9;
-}
-
-/* --------------------------------------------------------------------------
-   VISTA 5: RETIRAR USDT
-   -------------------------------------------------------------------------- */
-.withdraw-hero-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.withdraw-coin-art {
-  width: 88px;
-  height: 64px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.withdraw-coin-fallback {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: #16a384;
-  color: #fff;
-  font-size: 20px;
-  font-weight: 800;
-  align-items: center;
-  justify-content: center;
 }
 
 .withdraw-balance-card {
@@ -1316,6 +1362,130 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   Modal Informativo — Flat Dark Mode (#15171C)
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 10, 0.78);
+  z-index: 80;
+  padding: 18px 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.flat-modal-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 82dvh;
+  background: #15171c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flat-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #15171c;
+}
+
+.flat-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f4f6f8;
+}
+
+.flat-modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1e2128;
+  color: #e2e6ec;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.flat-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  color: #b8c0cc;
+  font-size: 12.5px;
+  line-height: 1.55;
+  background: #15171c;
+}
+
+.flat-modal-body h3 {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f4f6f8;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.flat-modal-body h3:first-child {
+  margin-top: 0;
+}
+
+.flat-modal-body p {
+  margin-bottom: 8px;
+}
+
+.exec-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #1c1f26;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 9px;
+}
+
+.exec-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #282c36;
+}
+
+.exec-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4f6f8;
+}
+
+.exec-role {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-mint);
+  margin-bottom: 3px;
+}
+
+.exec-bio {
+  font-size: 11.5px;
+  color: #a7b0bd;
+  line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
    Toast flotante
    -------------------------------------------------------------------------- */
 .toast {
@@ -1333,7 +1503,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 50;
+  z-index: 90;
   white-space: nowrap;
   max-width: 90vw;
   overflow: hidden;
@@ -1344,4 +1514,3 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-
