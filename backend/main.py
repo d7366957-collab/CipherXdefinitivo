@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import random
 from typing import List, Literal, Optional
+from urllib.parse import parse_qsl
 
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,6 +96,28 @@ def quantize_usdt(value: Decimal) -> Decimal:
     return value.quantize(SIX_DECIMALS, rounding=ROUND_HALF_UP)
 
 
+def parse_sponsor_id(raw_val: Optional[str]) -> Optional[int]:
+    if not raw_val:
+        return None
+    cleaned = str(raw_val).strip()
+    if cleaned.startswith("ref_"):
+        cleaned = cleaned[4:].strip()
+    if not cleaned.isdigit():
+        return None
+    sponsor_tg_id = int(cleaned)
+    return sponsor_tg_id if sponsor_tg_id > 0 else None
+
+
+def extract_start_param_from_init_data(init_data: Optional[str]) -> Optional[str]:
+    if not init_data:
+        return None
+    try:
+        pairs = dict(parse_qsl(init_data, keep_blank_values=False))
+        return pairs.get("start_param")
+    except Exception:
+        return None
+
+
 def generate_daily_trades_amounts(capital_base: Decimal, num_trades: int = 5) -> List[Decimal]:
     """
     Genera `num_trades` resultados (ganancias positivas y pérdidas negativas)
@@ -177,6 +200,23 @@ class UserOut(BaseModel):
     saldo_total: Decimal
     id_patrocinador: Optional[int] = None
     created_at: datetime
+
+
+class ReferralItemOut(BaseModel):
+    telegram_id: int
+    nombre: str
+    username: Optional[str] = None
+    fecha: datetime
+    bono: Decimal
+    activo: bool = False
+
+
+class ReferralStatsOut(BaseModel):
+    telegram_id: int
+    total_referidos: int
+    referidos_activos: int
+    comisiones_totales: Decimal
+    referidos: List[ReferralItemOut]
 
 
 class DepositWebhookIn(BaseModel):
@@ -268,6 +308,7 @@ def get_or_create_user_with_bonus(
     telegram_id: int,
     nombre: str,
     username: Optional[str] = None,
+    id_patrocinador: Optional[int] = None,
 ) -> User:
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if user:
@@ -278,10 +319,34 @@ def get_or_create_user_with_bonus(
         if username is not None and user.username != username.strip():
             user.username = username.strip() if username else None
             updated = True
+        if user.id_patrocinador is None and id_patrocinador and id_patrocinador != telegram_id:
+            sponsor = db.query(User).filter(User.telegram_id == id_patrocinador).first()
+            if sponsor:
+                user.id_patrocinador = sponsor.telegram_id
+                sponsor.saldo_congelado = quantize_usdt(
+                    Decimal(sponsor.saldo_congelado) + REFERRAL_BONUS_CONGELADO
+                )
+                db.add(
+                    Transaction(
+                        user_id=sponsor.id,
+                        tipo="bono",
+                        monto=REFERRAL_BONUS_CONGELADO,
+                        red=None,
+                        estado="confirmado",
+                    )
+                )
+                updated = True
         if updated:
             db.commit()
             db.refresh(user)
         return user
+
+    sponsor_id: Optional[int] = None
+    sponsor: Optional[User] = None
+    if id_patrocinador and id_patrocinador != telegram_id:
+        sponsor = db.query(User).filter(User.telegram_id == id_patrocinador).first()
+        if sponsor:
+            sponsor_id = sponsor.telegram_id
 
     user = User(
         telegram_id=telegram_id,
@@ -289,8 +354,25 @@ def get_or_create_user_with_bonus(
         username=username.strip() if username else None,
         saldo_congelado=WELCOME_BONUS_CONGELADO,
         saldo_retirable=INITIAL_SALDO_RETIRABLE,
+        id_patrocinador=sponsor_id,
     )
     db.add(user)
+    db.flush()
+
+    if sponsor:
+        sponsor.saldo_congelado = quantize_usdt(
+            Decimal(sponsor.saldo_congelado) + REFERRAL_BONUS_CONGELADO
+        )
+        db.add(
+            Transaction(
+                user_id=sponsor.id,
+                tipo="bono",
+                monto=REFERRAL_BONUS_CONGELADO,
+                red=None,
+                estado="confirmado",
+            )
+        )
+
     db.commit()
     db.refresh(user)
     return user
@@ -321,9 +403,16 @@ def get_current_user_me(
     dev_telegram_id: Optional[int] = Query(default=None, gt=0),
     dev_nombre: Optional[str] = Query(default=None, max_length=120),
     dev_username: Optional[str] = Query(default=None, max_length=120),
+    start_param: Optional[str] = Query(default=None, max_length=120),
+    dev_patrocinador: Optional[int] = Query(default=None, gt=0),
     x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
     db: Session = Depends(get_db),
 ):
+    sponsor_from_param = parse_sponsor_id(start_param)
+    if sponsor_from_param is None and x_telegram_init_data:
+        sponsor_from_param = parse_sponsor_id(extract_start_param_from_init_data(x_telegram_init_data))
+    resolved_sponsor = sponsor_from_param or dev_patrocinador
+
     if x_telegram_init_data:
         bot_token = _get_bot_token()
         auth_user: TelegramAuthUser = validate_telegram_init_data(
@@ -335,6 +424,7 @@ def get_current_user_me(
             telegram_id=auth_user.telegram_id,
             nombre=auth_user.nombre,
             username=auth_user.username,
+            id_patrocinador=resolved_sponsor,
         )
         return build_user_out(user)
 
@@ -345,6 +435,7 @@ def get_current_user_me(
         telegram_id=target_id,
         nombre=default_name,
         username=dev_username,
+        id_patrocinador=resolved_sponsor,
     )
     return build_user_out(user)
 
@@ -403,6 +494,67 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return build_user_out(new_user)
+
+
+@app.get("/api/referrals/{telegram_id}", response_model=ReferralStatsOut)
+def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    referred_users = (
+        db.query(User)
+        .filter(User.id_patrocinador == telegram_id)
+        .order_by(User.created_at.desc(), User.id.desc())
+        .all()
+    )
+
+    commissions_sum = (
+        db.query(func.coalesce(func.sum(Transaction.monto), Decimal("0.000000")))
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.tipo == "comision",
+            Transaction.estado == "confirmado",
+        )
+        .scalar()
+    )
+
+    items: List[ReferralItemOut] = []
+    active_count = 0
+
+    for ref in referred_users:
+        has_deposit = (
+            db.query(Transaction.id)
+            .filter(
+                Transaction.user_id == ref.id,
+                Transaction.tipo == "deposito",
+                Transaction.estado == "confirmado",
+            )
+            .first()
+            is not None
+        )
+        is_active = has_deposit or Decimal(ref.saldo_retirable or 0) > Decimal("0.000000")
+        if is_active:
+            active_count += 1
+
+        items.append(
+            ReferralItemOut(
+                telegram_id=ref.telegram_id,
+                nombre=ref.nombre,
+                username=ref.username,
+                fecha=ref.created_at,
+                bono=REFERRAL_BONUS_CONGELADO,
+                activo=is_active,
+            )
+        )
+
+    return ReferralStatsOut(
+        telegram_id=telegram_id,
+        total_referidos=len(referred_users),
+        referidos_activos=active_count,
+        comisiones_totales=quantize_usdt(Decimal(commissions_sum or 0)),
+        referidos=items,
+    )
 
 
 @app.post("/api/deposit/webhook", response_model=DepositOut, status_code=status.HTTP_201_CREATED)
