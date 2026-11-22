@@ -834,6 +834,19 @@
       mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${realTgId}`;
     }
 
+    // --- CÓDIGO PARA CARGAR LA FOTO DE PERFIL ---
+    const avatarImg = document.getElementById("userAvatarImg");
+    const avatarFallback = document.getElementById("userAvatarFallback");
+    
+    if (tgUser && tgUser.photo_url && avatarImg) {
+        avatarImg.src = tgUser.photo_url;
+        avatarImg.style.display = "block";
+        if (avatarFallback) avatarFallback.style.display = "none";
+    } else if (realName && avatarFallback) {
+        avatarFallback.textContent = realName.charAt(0).toUpperCase();
+    }
+    // ---------------------------------------------
+
     try {
       const url = new URL("/api/user/me", window.location.origin);
       const headers = {};
