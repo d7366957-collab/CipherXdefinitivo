@@ -72,6 +72,9 @@ class Trade(Base):
 # Reglas y Constantes de Negocio
 # ==========================================================================
 
+WELCOME_BONUS_CONGELADO = Decimal("40.000000")
+INITIAL_SALDO_RETIRABLE = Decimal("0.000000")
+
 MIN_DEPOSIT_USDT = Decimal("10.000000")
 MIN_WITHDRAW_USDT = Decimal("5.000000")
 WITHDRAW_FEE_USDT = Decimal("0.150000")
@@ -245,24 +248,59 @@ class TradeBatchOut(BaseModel):
 
 
 def build_user_out(user: User) -> UserOut:
+    congelado = Decimal(user.saldo_congelado or Decimal("0.000000"))
+    retirable = Decimal(user.saldo_retirable or Decimal("0.000000"))
     return UserOut(
         id=user.id,
         telegram_id=user.telegram_id,
         nombre=user.nombre,
         username=user.username,
-        saldo_congelado=user.saldo_congelado,
-        saldo_retirable=user.saldo_retirable,
-        saldo_total=user.saldo_congelado + user.saldo_retirable,
+        saldo_congelado=congelado,
+        saldo_retirable=retirable,
+        saldo_total=quantize_usdt(congelado + retirable),
         id_patrocinador=user.id_patrocinador,
         created_at=user.created_at,
     )
+
+
+def get_or_create_user_with_bonus(
+    db: Session,
+    telegram_id: int,
+    nombre: str,
+    username: Optional[str] = None,
+) -> User:
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if user:
+        updated = False
+        if nombre and user.nombre != nombre.strip():
+            user.nombre = nombre.strip()
+            updated = True
+        if username is not None and user.username != username.strip():
+            user.username = username.strip() if username else None
+            updated = True
+        if updated:
+            db.commit()
+            db.refresh(user)
+        return user
+
+    user = User(
+        telegram_id=telegram_id,
+        nombre=(nombre or "Trader").strip(),
+        username=username.strip() if username else None,
+        saldo_congelado=WELCOME_BONUS_CONGELADO,
+        saldo_retirable=INITIAL_SALDO_RETIRABLE,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 # ==========================================================================
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.3.1")
+app = FastAPI(title="CipherX API", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -275,42 +313,39 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "3-bot-security"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "4-users-bonus-cron"}
 
 
 @app.get("/api/user/me", response_model=UserOut)
 def get_current_user_me(
     dev_telegram_id: Optional[int] = Query(default=None, gt=0),
+    dev_nombre: Optional[str] = Query(default=None, max_length=120),
+    dev_username: Optional[str] = Query(default=None, max_length=120),
     x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
     db: Session = Depends(get_db),
 ):
-    if x_telegram_init_data is not None:
+    if x_telegram_init_data:
         bot_token = _get_bot_token()
         auth_user: TelegramAuthUser = validate_telegram_init_data(
             init_data=x_telegram_init_data,
             bot_token=bot_token,
         )
-        user = db.query(User).filter(User.telegram_id == auth_user.telegram_id).first()
-        if not user:
-            user = User(
-                telegram_id=auth_user.telegram_id,
-                nombre=auth_user.nombre,
-                username=auth_user.username,
-                saldo_congelado=Decimal("0.000000"),
-                saldo_retirable=Decimal("0.000000"),
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        user = get_or_create_user_with_bonus(
+            db=db,
+            telegram_id=auth_user.telegram_id,
+            nombre=auth_user.nombre,
+            username=auth_user.username,
+        )
         return build_user_out(user)
 
     target_id = dev_telegram_id or 78452613
-    user = db.query(User).filter(User.telegram_id == target_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario de prueba no encontrado",
-        )
+    default_name = dev_nombre or ("Alex" if target_id == 78452613 else f"User {target_id}")
+    user = get_or_create_user_with_bonus(
+        db=db,
+        telegram_id=target_id,
+        nombre=default_name,
+        username=dev_username,
+    )
     return build_user_out(user)
 
 
@@ -319,12 +354,12 @@ def verify_auth_endpoint(
     auth_user: TelegramAuthUser = Depends(verify_telegram_webapp),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.telegram_id == auth_user.telegram_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no registrado",
-        )
+    user = get_or_create_user_with_bonus(
+        db=db,
+        telegram_id=auth_user.telegram_id,
+        nombre=auth_user.nombre,
+        username=auth_user.username,
+    )
     return build_user_out(user)
 
 
@@ -346,8 +381,8 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
         telegram_id=payload.telegram_id,
         nombre=payload.nombre.strip(),
         username=payload.username.strip() if payload.username else None,
-        saldo_congelado=Decimal("0.000000"),
-        saldo_retirable=Decimal("0.000000"),
+        saldo_congelado=WELCOME_BONUS_CONGELADO,
+        saldo_retirable=INITIAL_SALDO_RETIRABLE,
         id_patrocinador=sponsor_id,
     )
     db.add(new_user)
