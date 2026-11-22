@@ -174,30 +174,59 @@
     }
   }
 
-  function initTelegramBridge() {
-    if (!tg) return;
-    try {
-      tg.ready();
-      tg.expand();
-      if (typeof tg.setHeaderColor === "function") {
-        tg.setHeaderColor("#071015");
+  // ==========================================
+  // AQUÍ ESTÁ LA MAGIA: CONEXIÓN CON FASTAPI
+  // ==========================================
+  async function initTelegramBridge() {
+    // 1. Configurar Telegram UI
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        if (typeof tg.setHeaderColor === "function") tg.setHeaderColor("#071015");
+        if (typeof tg.setBackgroundColor === "function") tg.setBackgroundColor("#071015");
+      } catch (err) {
+        console.warn("Telegram WebApp SDK fallback:", err);
       }
-      if (typeof tg.setBackgroundColor === "function") {
-        tg.setBackgroundColor("#071015");
+    }
+
+    // 2. Traer datos reales de la Base de Datos
+    try {
+      const url = new URL('/api/user/me', window.location.origin);
+      const headers = {};
+      
+      if (tg && tg.initData) {
+        // Si estamos en Telegram, usamos la autenticación real
+        headers['X-Telegram-Init-Data'] = tg.initData;
+      } else {
+        // Si estamos en el navegador (dev), usamos el ID de prueba
+        url.searchParams.append('dev_telegram_id', '78452613');
       }
 
-      const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
-      if (tgUser) {
-        if (tgUser.first_name) {
-          mockData.user.name = tgUser.first_name;
-        }
-        if (tgUser.id) {
-          mockData.user.id = String(tgUser.id);
-          mockData.user.referralLink = `https://t.me/CipherX_bot?start=${tgUser.id}`;
-        }
+      const res = await fetch(url.toString(), { headers });
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Datos reales recibidos:", data);
+
+        // 3. Actualizamos el mockData con los datos reales del servidor
+        mockData.user.name = data.nombre || mockData.user.name;
+        mockData.user.id = String(data.telegram_id || mockData.user.id);
+        mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${mockData.user.id}`;
+        
+        mockData.balances.total = parseFloat(data.saldo_total || mockData.balances.total);
+        mockData.balances.frozen = parseFloat(data.saldo_congelado || mockData.balances.frozen);
+        mockData.balances.withdrawable = parseFloat(data.saldo_retirable || mockData.balances.withdrawable);
+        mockData.balances.availableWallet = parseFloat(data.saldo_retirable || mockData.balances.availableWallet);
+        
+        // 4. Volvemos a pintar la pantalla con los datos actualizados
+        renderBalances();
+        renderReferralsView();
+      } else {
+        console.error("Error del servidor:", res.status);
       }
-    } catch (err) {
-      console.warn("Telegram WebApp SDK fallback:", err);
+    } catch (error) {
+      console.error("Error de conexión con FastAPI:", error);
     }
   }
 
@@ -561,7 +590,6 @@
       showToast("Datos sincronizados");
     });
 
-    // Menú de 3 puntos (id="btnMenu")
     $("#btnMenu").addEventListener("click", (e) => {
       e.stopPropagation();
       const menu = $("#threeDotsMenu");
@@ -745,7 +773,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    initTelegramBridge();
+    initTelegramBridge(); // <-- Ahora esta función es asíncrona y trae los datos reales
     renderBalances();
     renderChart("1D");
     renderTradesList();
