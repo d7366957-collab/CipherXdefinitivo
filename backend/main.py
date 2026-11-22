@@ -3,12 +3,18 @@ from decimal import Decimal, ROUND_HALF_UP
 import random
 from typing import List, Literal, Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Query, status
+from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Column, BigInteger, String, Numeric, DateTime, ForeignKey, func
 from sqlalchemy.orm import Session, relationship
 
+from auth import (
+    TelegramAuthUser,
+    _get_bot_token,
+    validate_telegram_init_data,
+    verify_telegram_webapp,
+)
 from database import Base, engine, get_db
 
 # ==========================================================================
@@ -256,7 +262,7 @@ def build_user_out(user: User) -> UserOut:
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.2.7")
+app = FastAPI(title="CipherX API", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -269,7 +275,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "2-complete-eth-only"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "3-bot-security"}
 
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -571,5 +577,59 @@ def get_user_by_telegram_id(telegram_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado",
+        )
+    return build_user_out(user)
+
+
+# ==========================================================================
+# Endpoints Fase 3: Seguridad Telegram WebApp (/api/user/me)
+# ==========================================================================
+
+@app.get("/api/user/me", response_model=UserOut)
+def get_current_user_me(
+    dev_telegram_id: Optional[int] = Query(default=None, gt=0),
+    x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-Init-Data"),
+    db: Session = Depends(get_db),
+):
+    if x_telegram_init_data is not None:
+        bot_token = _get_bot_token()
+        auth_user: TelegramAuthUser = validate_telegram_init_data(
+            init_data=x_telegram_init_data,
+            bot_token=bot_token,
+        )
+        user = db.query(User).filter(User.telegram_id == auth_user.telegram_id).first()
+        if not user:
+            user = User(
+                telegram_id=auth_user.telegram_id,
+                nombre=auth_user.nombre,
+                username=auth_user.username,
+                saldo_congelado=Decimal("0.000000"),
+                saldo_retirable=Decimal("0.000000"),
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        return build_user_out(user)
+
+    target_id = dev_telegram_id or 78452613
+    user = db.query(User).filter(User.telegram_id == target_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario de prueba no encontrado",
+        )
+    return build_user_out(user)
+
+
+@app.get("/api/auth/verify", response_model=UserOut)
+def verify_auth_endpoint(
+    auth_user: TelegramAuthUser = Depends(verify_telegram_webapp),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.telegram_id == auth_user.telegram_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no registrado",
         )
     return build_user_out(user)
