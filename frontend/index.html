@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#071015" />
-  <title>CipherX — Mini App</title>
+  <title data-i18n="app.title">CipherX — Mini App</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -12,34 +12,68 @@
   <div id="app" class="app-shell">
     <!-- Topbar estilo Telegram Mini App -->
     <header class="tg-topbar" id="tgTopbar">
-      <button type="button" class="tg-top-btn" id="btnTopLeft" aria-label="Cerrar o volver">
+      <button type="button" class="tg-top-btn" id="btnTopLeft" aria-label="Cerrar o volver" data-i18n-aria-label="top.closeOrBack">
         <span id="topLeftIcon">×</span>
-        <span id="topLeftText">Cerrar</span>
+        <span id="topLeftText" data-i18n="top.close">Cerrar</span>
       </button>
 
       <div class="tg-brand">
         <span class="tg-brand-title">CipherX</span>
-        <span class="tg-brand-sub">mini app</span>
+        <span class="tg-brand-sub" data-i18n="top.miniApp">mini app</span>
       </div>
 
       <div class="tg-top-actions">
-        <button type="button" class="tg-icon-btn" id="btnRefreshApp" title="Actualizar vista" aria-label="Actualizar vista">
+        <button
+          type="button"
+          class="tg-icon-btn"
+          id="btnLang"
+          title="Idioma"
+          aria-label="Idioma"
+          aria-expanded="false"
+          data-i18n-title="top.language"
+          data-i18n-aria-label="top.language"
+        >
           🌐
         </button>
-        <button type="button" class="tg-icon-btn" id="btnMenu" title="Menú" aria-label="Menú" aria-expanded="false">
+        <button
+          type="button"
+          class="tg-icon-btn"
+          id="btnMenu"
+          title="Menú"
+          aria-label="Menú"
+          aria-expanded="false"
+          data-i18n-title="top.menu"
+          data-i18n-aria-label="top.menu"
+        >
           •••
+        </button>
+      </div>
+
+      <!-- Selector de idioma (ES / RU / EN) -->
+      <div class="top-dropdown lang-dropdown" id="langMenu" role="menu" aria-hidden="true">
+        <button type="button" class="dropdown-item lang-option active" data-lang="es" role="menuitem">
+          <span>🇪🇸 Español</span>
+          <span class="lang-check">✓</span>
+        </button>
+        <button type="button" class="dropdown-item lang-option" data-lang="ru" role="menuitem">
+          <span>🇷🇺 Русский</span>
+          <span class="lang-check"></span>
+        </button>
+        <button type="button" class="dropdown-item lang-option" data-lang="en" role="menuitem">
+          <span>🇺🇸 English</span>
+          <span class="lang-check"></span>
         </button>
       </div>
 
       <!-- Menú desplegable de los 3 puntos -->
       <div class="top-dropdown" id="threeDotsMenu" role="menu" aria-hidden="true">
-        <button type="button" class="dropdown-item" data-modal="terms" role="menuitem">
+        <button type="button" class="dropdown-item" data-modal="terms" role="menuitem" data-i18n="menu.terms">
           Términos y Condiciones
         </button>
-        <button type="button" class="dropdown-item" data-modal="privacy" role="menuitem">
+        <button type="button" class="dropdown-item" data-modal="privacy" role="menuitem" data-i18n="menu.privacy">
           Política de Privacidad
         </button>
-        <button type="button" class="dropdown-item" data-modal="about" role="menuitem">
+        <button type="button" class="dropdown-item" data-modal="about" role="menuitem" data-i18n="menu.about">
           Sobre Nosotros
         </button>
       </div>
@@ -51,7 +85,7 @@
       <!-- =========================================================
            VISTA 1: INICIO
            ========================================================= -->
-      <section class="view active" id="view-home" data-view="home" aria-label="Inicio">
+      <section class="view active" id="view-home" data-view="home" aria-label="Inicio" data-i18n-aria-label="nav.home">
         <!-- Perfil del usuario -->
         <div class="profile-row">
           <div class="avatar-wrap">
@@ -68,9 +102,9 @@
           <div class="profile-meta">
             <div class="profile-name-line">
               <h1 class="profile-name" id="userName">Hola, Alex</h1>
-              <span class="verified-badge" title="Cuenta verificada">✓</span>
+              <span class="verified-badge" title="Cuenta verificada" data-i18n-title="home.verified">✓</span>
             </div>
-            <button type="button" class="profile-id-btn" id="copyUserIdBtn" title="Copiar ID">
+            <button type="button" class="profile-id-btn" id="copyUserIdBtn" title="Copiar ID" data-i18n-title="home.copyId">
               <span>ID: <strong id="userIdText">78452613</strong></span>
               <span class="copy-mini-icon">❐</span>
             </button>
@@ -90,8 +124,14 @@
           <div class="balance-hero-top">
             <div>
               <div class="card-label-row">
-                <span>Saldo Total</span>
-                <button type="button" class="eye-btn" id="toggleBalanceVisibility" aria-label="Ocultar o mostrar saldos">
+                <span data-i18n="home.totalBalance">Saldo Total</span>
+                <button
+                  type="button"
+                  class="eye-btn"
+                  id="toggleBalanceVisibility"
+                  aria-label="Ocultar o mostrar saldos"
+                  data-i18n-aria-label="home.toggleBalance"
+                >
                   👁
                 </button>
               </div>
@@ -99,7 +139,7 @@
               <div class="hero-delta positive" id="totalDeltaText">+12.68% hoy</div>
             </div>
 
-            <div class="timeframe-pills" role="group" aria-label="Temporalidad del gráfico">
+            <div class="timeframe-pills" role="group" aria-label="Temporalidad del gráfico" data-i18n-aria-label="home.timeframe">
               <button type="button" class="tf-btn active" data-tf="1D">1D</button>
               <button type="button" class="tf-btn" data-tf="1S">1S</button>
               <button type="button" class="tf-btn" data-tf="1M">1M</button>
@@ -124,7 +164,7 @@
         <!-- 3 Mini Tarjetas: Saldo Congelado / Saldo Retirable / Rendimiento Diario -->
         <div class="stats-triple-grid">
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Saldo Congelado</div>
+            <div class="mini-stat-title" data-i18n="home.frozenBalance">Saldo Congelado</div>
             <div class="mini-stat-value-row">
               <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <rect x="4" y="10" width="16" height="11" rx="3" fill="#f5b942" />
@@ -137,7 +177,7 @@
           </div>
 
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Saldo Retirable</div>
+            <div class="mini-stat-title" data-i18n="home.withdrawableBalance">Saldo Retirable</div>
             <div class="mini-stat-value-row">
               <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <rect x="2.5" y="5" width="19" height="14" rx="3" fill="#23bce8" />
@@ -150,7 +190,7 @@
           </div>
 
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Rendimiento Diario</div>
+            <div class="mini-stat-title" data-i18n="home.dailyYield">Rendimiento Diario</div>
             <div class="mini-stat-value-row">
               <svg class="icon-3d svg-3d" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <rect x="4" y="13" width="3.5" height="7" rx="1" fill="#23bce8" />
@@ -173,8 +213,8 @@
           />
           <div class="ai-banner-overlay" aria-hidden="true"></div>
           <div class="ai-banner-text">
-            <h2 class="ai-banner-title">Nuestro equipo opera por ti</h2>
-            <p class="ai-banner-sub">Inteligencia. Estrategia. Resultados.</p>
+            <h2 class="ai-banner-title" data-i18n="home.aiBannerTitle">Nuestro equipo opera por ti</h2>
+            <p class="ai-banner-sub" data-i18n="home.aiBannerSub">Inteligencia. Estrategia. Resultados.</p>
           </div>
           <span class="ai-chevron">›</span>
         </button>
@@ -182,8 +222,8 @@
         <!-- Historial de operaciones del equipo -->
         <section class="section-block">
           <div class="section-header">
-            <h2 class="section-title">Historial de operaciones del equipo</h2>
-            <button type="button" class="section-link" id="toggleAllTradesBtn">Ver todo &gt;</button>
+            <h2 class="section-title" data-i18n="home.teamTradesTitle">Historial de operaciones del equipo</h2>
+            <button type="button" class="section-link" id="toggleAllTradesBtn" data-i18n="common.viewAll">Ver todo &gt;</button>
           </div>
 
           <div class="card list-card" id="tradesListContainer">
@@ -195,7 +235,7 @@
       <!-- =========================================================
            VISTA 2: REFERIDOS
            ========================================================= -->
-      <section class="view" id="view-referrals" data-view="referrals" aria-label="Referidos">
+      <section class="view" id="view-referrals" data-view="referrals" aria-label="Referidos" data-i18n-aria-label="nav.referrals">
         <!-- Banner superior de lado a lado -->
         <div class="referral-top-banner card mb-12">
           <img
@@ -206,11 +246,11 @@
           />
           <div class="referral-top-banner-overlay" aria-hidden="true"></div>
           <div class="referral-top-banner-content">
-            <h1 class="page-hero-title">Referidos</h1>
-            <p class="page-hero-subtitle">Invita, gana, crece juntos</p>
+            <h1 class="page-hero-title" data-i18n="referrals.title">Referidos</h1>
+            <p class="page-hero-subtitle" data-i18n="referrals.subtitle">Invita, gana, crece juntos</p>
             <div class="hero-micro-note">
               <span class="micro-icon icon-3d">👥</span>
-              <span>Más personas. Más oportunidades.</span>
+              <span data-i18n="referrals.microNote">Más personas. Más oportunidades.</span>
             </div>
           </div>
         </div>
@@ -225,27 +265,27 @@
                 <rect x="10.75" y="7" width="2.5" height="14" fill="#ffffff" fill-opacity="0.85" />
                 <path d="M12 7c-1.5-2.5-5-2.5-5 0s3.5 0 5 0zm0 0c1.5-2.5 5-2.5 5 0s-3.5 0-5 0z" fill="#38bdf8" />
               </svg>
-              <span class="benefit-label">Bono</span>
+              <span class="benefit-label" data-i18n="referrals.bonusLabel">Bono</span>
             </div>
             <div class="benefit-highlight">+1 USDT</div>
-            <div class="benefit-sub">Saldo congelado</div>
-            <p class="benefit-explain">1 USDT en saldo congelado por cada referido que se registre.</p>
+            <div class="benefit-sub" data-i18n="home.frozenBalance">Saldo congelado</div>
+            <p class="benefit-explain" data-i18n="referrals.bonusDesc">1 USDT en saldo congelado por cada referido que se registre.</p>
           </div>
 
           <div class="card benefit-card">
             <div class="benefit-top">
               <span class="pct-badge icon-3d">%</span>
-              <span class="benefit-label">Comisión</span>
+              <span class="benefit-label" data-i18n="referrals.commissionLabel">Comisión</span>
             </div>
             <div class="benefit-highlight">+12%</div>
-            <div class="benefit-sub">Saldo retirable</div>
-            <p class="benefit-explain">12% de comisión sobre lo que invierta tu referido.</p>
+            <div class="benefit-sub" data-i18n="home.withdrawableBalance">Saldo retirable</div>
+            <p class="benefit-explain" data-i18n="referrals.commissionDesc">12% de comisión sobre lo que invierta tu referido.</p>
           </div>
         </div>
 
         <!-- Enlace de referido + Botón Compartir en Telegram -->
         <div class="card referral-box-card">
-          <label for="referralLinkInput" class="field-caption">Tu enlace de referido</label>
+          <label for="referralLinkInput" class="field-caption" data-i18n="referrals.yourLink">Tu enlace de referido</label>
           <div class="link-input-group">
             <input
               type="text"
@@ -254,7 +294,13 @@
               value="https://t.me/CipherX_bot?start=78452613"
               readonly
             />
-            <button type="button" class="copy-square-btn" id="copyReferralLinkBtn" aria-label="Copiar enlace de referido">
+            <button
+              type="button"
+              class="copy-square-btn"
+              id="copyReferralLinkBtn"
+              aria-label="Copiar enlace de referido"
+              data-i18n-aria-label="referrals.copyLink"
+            >
               ❐
             </button>
           </div>
@@ -266,14 +312,14 @@
                 d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
               />
             </svg>
-            <span>Compartir en Telegram</span>
+            <span data-i18n="referrals.shareTelegram">Compartir en Telegram</span>
           </button>
         </div>
 
         <!-- Métricas de referidos -->
         <div class="stats-triple-grid">
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Total Referidos</div>
+            <div class="mini-stat-title" data-i18n="referrals.totalReferrals">Total Referidos</div>
             <div class="mini-stat-value-row">
               <span class="mini-stat-icon icon-3d">👥</span>
               <span class="mini-stat-num" id="totalReferralsCount">128</span>
@@ -281,7 +327,7 @@
           </div>
 
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Activos</div>
+            <div class="mini-stat-title" data-i18n="referrals.activeReferrals">Activos</div>
             <div class="mini-stat-value-row">
               <span class="dot-online"></span>
               <span class="mini-stat-num" id="activeReferralsCount">86</span>
@@ -289,7 +335,7 @@
           </div>
 
           <div class="card mini-stat-card">
-            <div class="mini-stat-title">Comisiones</div>
+            <div class="mini-stat-title" data-i18n="referrals.commissions">Comisiones</div>
             <div class="mini-stat-value-row">
               <span class="mini-stat-icon icon-3d">💰</span>
               <span class="mini-stat-num" id="referralCommissionsText">248.32</span>
@@ -301,8 +347,8 @@
         <!-- Últimos referidos -->
         <section class="section-block">
           <div class="section-header">
-            <h2 class="section-title">Últimos referidos</h2>
-            <button type="button" class="section-link" id="toggleAllReferralsBtn">Ver todos &gt;</button>
+            <h2 class="section-title" data-i18n="referrals.recentTitle">Últimos referidos</h2>
+            <button type="button" class="section-link" id="toggleAllReferralsBtn" data-i18n="common.viewAll">Ver todos &gt;</button>
           </div>
 
           <div class="card list-card" id="referralsListContainer">
@@ -314,7 +360,7 @@
       <!-- =========================================================
            VISTA 3: BILLETERA
            ========================================================= -->
-      <section class="view" id="view-wallet" data-view="wallet" aria-label="Billetera">
+      <section class="view" id="view-wallet" data-view="wallet" aria-label="Billetera" data-i18n-aria-label="nav.wallet">
         <!-- Banner superior de Billetera a ancho completo -->
         <div class="wallet-full-banner card mb-12">
           <img
@@ -325,16 +371,22 @@
           />
           <div class="wallet-full-banner-overlay" aria-hidden="true"></div>
           <div class="wallet-full-banner-copy">
-            <h1 class="page-hero-title">Billetera</h1>
-            <p class="page-hero-subtitle">Tu libertad, en tus manos</p>
+            <h1 class="page-hero-title" data-i18n="wallet.title">Billetera</h1>
+            <p class="page-hero-subtitle" data-i18n="wallet.subtitle">Tu libertad, en tus manos</p>
           </div>
         </div>
 
         <!-- Tarjeta Saldo Disponible (Retirable) + Botones Depositar / Retirar -->
         <div class="card wallet-balance-card">
           <div class="card-label-row">
-            <span>Saldo Disponible (Retirable)</span>
-            <button type="button" class="eye-btn" id="toggleWalletVisibility" aria-label="Mostrar u ocultar saldo disponible">
+            <span data-i18n="wallet.availableBalance">Saldo Disponible (Retirable)</span>
+            <button
+              type="button"
+              class="eye-btn"
+              id="toggleWalletVisibility"
+              aria-label="Mostrar u ocultar saldo disponible"
+              data-i18n-aria-label="wallet.toggleBalance"
+            >
               👁
             </button>
           </div>
@@ -344,18 +396,18 @@
           <div class="wallet-actions-row">
             <button type="button" class="btn-deposit" id="goToDepositBtn">
               <span>↓</span>
-              <span>Depositar</span>
+              <span data-i18n="wallet.deposit">Depositar</span>
             </button>
             <button type="button" class="btn-withdraw" id="goToWithdrawBtn">
               <span>↑</span>
-              <span>Retirar</span>
+              <span data-i18n="wallet.withdraw">Retirar</span>
             </button>
           </div>
         </div>
 
         <!-- Redes disponibles con imágenes reales -->
         <section class="section-block">
-          <h2 class="section-title mb-10">Redes disponibles</h2>
+          <h2 class="section-title mb-10" data-i18n="wallet.networksTitle">Redes disponibles</h2>
 
           <div class="networks-grid" id="walletNetworksGrid">
             <button type="button" class="card network-card" data-network="TON">
@@ -377,11 +429,11 @@
           <div class="limits-row">
             <div class="limit-item">
               <span class="limit-info-icon">ⓘ</span>
-              <span>Min. retiro: <strong>5 USDT</strong></span>
+              <span data-i18n="wallet.minWithdraw">Min. retiro: <strong>5 USDT</strong></span>
             </div>
             <div class="limit-item">
               <span class="limit-info-icon">ⓘ</span>
-              <span>Min. depósito: <strong>10 USDT</strong></span>
+              <span data-i18n="wallet.minDeposit">Min. depósito: <strong>10 USDT</strong></span>
             </div>
           </div>
         </section>
@@ -389,8 +441,8 @@
         <!-- Historial de transacciones -->
         <section class="section-block">
           <div class="section-header">
-            <h2 class="section-title">Historial de transacciones</h2>
-            <button type="button" class="section-link" id="toggleAllTxBtn">Ver todo &gt;</button>
+            <h2 class="section-title" data-i18n="wallet.txHistoryTitle">Historial de transacciones</h2>
+            <button type="button" class="section-link" id="toggleAllTxBtn" data-i18n="common.viewAll">Ver todo &gt;</button>
           </div>
 
           <div class="card list-card" id="txListContainer">
@@ -402,10 +454,10 @@
       <!-- =========================================================
            VISTA 4: DEPOSITAR USDT (Subvista desde Billetera)
            ========================================================= -->
-      <section class="view" id="view-deposit" data-view="deposit" aria-label="Depositar USDT">
+      <section class="view" id="view-deposit" data-view="deposit" aria-label="Depositar USDT" data-i18n-aria-label="deposit.ariaLabel">
         <div class="subview-header">
-          <h1 class="subview-title">Depositar USDT</h1>
-          <p class="subview-subtitle">Selecciona la red de depósito</p>
+          <h1 class="subview-title" data-i18n="deposit.title">Depositar USDT</h1>
+          <p class="subview-subtitle" data-i18n="deposit.selectNetwork">Selecciona la red de depósito</p>
         </div>
 
         <!-- Selector de red -->
@@ -430,7 +482,7 @@
         <div class="card deposit-qr-card">
           <div class="qr-box-wrap">
             <div class="qr-frame">
-              <canvas id="depositQrCanvas" width="116" height="116" aria-label="Código QR de depósito"></canvas>
+              <canvas id="depositQrCanvas" width="116" height="116" aria-label="Código QR de depósito" data-i18n-aria-label="deposit.qrAria"></canvas>
               <span class="qr-center-t" aria-hidden="true">₮</span>
             </div>
           </div>
@@ -440,7 +492,7 @@
             <div class="deposit-addr-value" id="depositAddressValue">TXYZ9h7k3s8f4Jm2Qv6L9p1R8t5Wq3eZ1x1234</div>
             <button type="button" class="btn-copy-address" id="copyDepositAddressBtn">
               <span>❐</span>
-              <span>Copiar Dirección</span>
+              <span data-i18n="deposit.copyAddress">Copiar Dirección</span>
             </button>
           </div>
         </div>
@@ -449,8 +501,8 @@
         <div class="card notice-banner-card">
           <span class="notice-i">ⓘ</span>
           <div class="notice-text">
-            <div>Envía solo USDT por la red seleccionada.</div>
-            <div>Mínimo 10 USDT.</div>
+            <div data-i18n="deposit.noticeLine1">Envía solo USDT por la red seleccionada.</div>
+            <div data-i18n="deposit.noticeLine2">Mínimo 10 USDT.</div>
           </div>
         </div>
 
@@ -465,13 +517,13 @@
             />
           </div>
           <div class="promo-copy">
-            <div class="promo-title">Depósitos seguros,<br />un futuro más grande</div>
+            <div class="promo-title" data-i18n="deposit.promoTitle">Depósitos seguros,<br />un futuro más grande</div>
             <div class="promo-brand">CipherX</div>
           </div>
         </div>
 
         <!-- CTA principal -->
-        <button type="button" class="btn-cyan-cta full-width mt-14" id="confirmDepositBtn">
+        <button type="button" class="btn-cyan-cta full-width mt-14" id="confirmDepositBtn" data-i18n="deposit.confirmBtn">
           Ya he realizado el depósito
         </button>
       </section>
@@ -479,11 +531,11 @@
       <!-- =========================================================
            VISTA 5: RETIRAR USDT (Subvista desde Billetera)
            ========================================================= -->
-      <section class="view" id="view-withdraw" data-view="withdraw" aria-label="Retirar USDT">
+      <section class="view" id="view-withdraw" data-view="withdraw" aria-label="Retirar USDT" data-i18n-aria-label="withdraw.ariaLabel">
         <div class="subview-header withdraw-hero-header">
           <div>
-            <h1 class="subview-title">Retirar USDT</h1>
-            <p class="subview-subtitle">Completa la información para tu retiro</p>
+            <h1 class="subview-title" data-i18n="withdraw.title">Retirar USDT</h1>
+            <p class="subview-subtitle" data-i18n="withdraw.subtitle">Completa la información para tu retiro</p>
           </div>
           <div class="withdraw-coin-centered-wrap">
             <img
@@ -497,22 +549,31 @@
 
         <!-- Saldo disponible -->
         <div class="card withdraw-balance-card mb-14">
-          <div class="field-caption">Saldo Disponible</div>
+          <div class="field-caption" data-i18n="withdraw.availableLabel">Saldo Disponible</div>
           <div class="withdraw-available-amount" id="withdrawAvailableText">1,248.32 USDT</div>
         </div>
 
         <!-- Dirección de billetera -->
         <div class="form-group mb-14">
-          <label for="withdrawAddressInput" class="field-label">Dirección de Billetera</label>
+          <label for="withdrawAddressInput" class="field-label" data-i18n="withdraw.addressLabel">Dirección de Billetera</label>
           <div class="input-with-trailing">
             <input
               type="text"
               id="withdrawAddressInput"
               class="dark-input"
               placeholder="Ingresa la dirección de tu billetera"
+              data-i18n-placeholder="withdraw.addressPlaceholder"
               autocomplete="off"
             />
-            <button type="button" class="trailing-action-btn" id="pasteAddressBtn" title="Pegar dirección" aria-label="Pegar dirección">
+            <button
+              type="button"
+              class="trailing-action-btn"
+              id="pasteAddressBtn"
+              title="Pegar dirección"
+              aria-label="Pegar dirección"
+              data-i18n-title="withdraw.pasteAddress"
+              data-i18n-aria-label="withdraw.pasteAddress"
+            >
               ⛶
             </button>
           </div>
@@ -520,7 +581,7 @@
 
         <!-- Selector de red -->
         <div class="form-group mb-14">
-          <div class="field-label">Selecciona la red</div>
+          <div class="field-label" data-i18n="withdraw.selectNetwork">Selecciona la red</div>
           <div class="networks-grid" id="withdrawNetworksGrid">
             <button type="button" class="card network-card" data-network="TON">
               <img src="img/ton.webp" alt="TON" class="net-img" width="32" height="32" />
@@ -541,28 +602,29 @@
 
         <!-- Monto a retirar -->
         <div class="form-group mb-14">
-          <label for="withdrawAmountInput" class="field-label">Monto a Retirar</label>
+          <label for="withdrawAmountInput" class="field-label" data-i18n="withdraw.amountLabel">Monto a Retirar</label>
           <div class="input-with-trailing">
             <input
               type="number"
               id="withdrawAmountInput"
               class="dark-input"
               placeholder="Ingresa el monto en USDT"
+              data-i18n-placeholder="withdraw.amountPlaceholder"
               step="0.01"
               min="0"
             />
-            <button type="button" class="max-pill-btn" id="withdrawMaxBtn">Máximo</button>
+            <button type="button" class="max-pill-btn" id="withdrawMaxBtn" data-i18n="withdraw.maxBtn">Máximo</button>
           </div>
         </div>
 
         <!-- Resumen de recepción y comisión -->
         <div class="card summary-box-card mb-12">
           <div class="summary-row">
-            <span class="summary-label">Monto a recibir</span>
+            <span class="summary-label" data-i18n="withdraw.receiveLabel">Monto a recibir</span>
             <span class="summary-val-strong" id="withdrawReceiveText">0.00 USDT</span>
           </div>
           <div class="summary-row mt-8">
-            <span class="summary-label">Comisión de red</span>
+            <span class="summary-label" data-i18n="withdraw.feeLabel">Comisión de red</span>
             <span class="summary-val-muted" id="withdrawFeeText">0.15 USDT</span>
           </div>
         </div>
@@ -570,11 +632,11 @@
         <!-- Nota de retiro mínimo y procesamiento por lotes -->
         <div class="withdraw-note-row mb-14">
           <span class="notice-i">ⓘ</span>
-          <span>Mínimo de retiro: 5 USDT. Retiro automático en lotes. Puede tardar hasta 24 horas.</span>
+          <span data-i18n="withdraw.note">Mínimo de retiro: 5 USDT. Retiro automático en lotes. Puede tardar hasta 24 horas.</span>
         </div>
 
         <!-- Botón Solicitar Retiro -->
-        <button type="button" class="btn-cyan-cta full-width" id="submitWithdrawBtn">
+        <button type="button" class="btn-cyan-cta full-width" id="submitWithdrawBtn" data-i18n="withdraw.submitBtn">
           Solicitar Retiro
         </button>
       </section>
@@ -582,13 +644,13 @@
     </main>
 
     <!-- Barra de navegación inferior (3 pestañas principales · ícono de billetera limpio sin X) -->
-    <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
+    <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal" data-i18n-aria-label="nav.main">
       <button type="button" class="nav-tab active" data-target="home">
         <svg class="nav-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 10.5L12 3l9 7.5" />
           <path d="M5.5 9.5V20h13V9.5" />
         </svg>
-        <span class="nav-label">Inicio</span>
+        <span class="nav-label" data-i18n="nav.home">Inicio</span>
       </button>
 
       <button type="button" class="nav-tab" data-target="referrals">
@@ -598,7 +660,7 @@
           <circle cx="16.5" cy="9" r="2.4" />
           <path d="M15.5 19c.3-2.1 1.9-3.6 4-4" />
         </svg>
-        <span class="nav-label">Referidos</span>
+        <span class="nav-label" data-i18n="nav.referrals">Referidos</span>
       </button>
 
       <button type="button" class="nav-tab" data-target="wallet">
@@ -607,7 +669,7 @@
           <path d="M2.5 9.5h19" />
           <circle cx="16.5" cy="14" r="1.1" fill="currentColor" stroke="none" />
         </svg>
-        <span class="nav-label">Billetera</span>
+        <span class="nav-label" data-i18n="nav.wallet">Billetera</span>
       </button>
     </nav>
 
@@ -615,8 +677,8 @@
     <div class="modal-backdrop" id="infoModalBackdrop" aria-hidden="true">
       <div class="flat-modal-card" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
         <div class="flat-modal-header">
-          <h2 class="flat-modal-title" id="infoModalTitle">Información</h2>
-          <button type="button" class="flat-modal-close" id="closeInfoModalBtn" aria-label="Cerrar">×</button>
+          <h2 class="flat-modal-title" id="infoModalTitle" data-i18n="modal.info">Información</h2>
+          <button type="button" class="flat-modal-close" id="closeInfoModalBtn" aria-label="Cerrar" data-i18n-aria-label="top.close">×</button>
         </div>
         <div class="flat-modal-body" id="infoModalBody"></div>
       </div>
