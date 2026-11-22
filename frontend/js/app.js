@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CipherX Mini App — Lógica de Interfaz, Datos Mock y Modales Informativos
+   CipherX Mini App — Lógica de Interfaz, Sincronización Real y Modales
    ========================================================================== */
 
 (() => {
@@ -11,13 +11,13 @@
     user: {
       name: "Alex",
       id: "78452613",
-      referralLink: "https://t.me/CipherX_bot?start=78452613",
+      referralLink: "https://t.me/CipherX_Trade_bot?start=78452613",
     },
     balances: {
       total: 1248.32,
       frozen: 320.00,
       withdrawable: 928.32,
-      availableWallet: 1248.32,
+      availableWallet: 928.32,
       dailyYieldPct: 12.68,
       dailyDeltaPct: 12.68,
     },
@@ -145,6 +145,18 @@
     });
   }
 
+  function formatDateLabel(isoOrStr) {
+    if (!isoOrStr) return "Reciente";
+    const d = new Date(isoOrStr);
+    if (Number.isNaN(d.getTime())) return String(isoOrStr);
+    return d.toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   function showToast(message) {
     const toast = $("#toastBanner");
     if (!toast) return;
@@ -174,11 +186,80 @@
     }
   }
 
-  // ==========================================
-  // AQUÍ ESTÁ LA MAGIA: CONEXIÓN CON FASTAPI
-  // ==========================================
+  async function syncUserActivityFromBackend(telegramId, capitalBase) {
+    if (!telegramId) return;
+
+    try {
+      const [tradesRes, txRes] = await Promise.all([
+        fetch(`/api/trades/${encodeURIComponent(telegramId)}`),
+        fetch(`/api/transactions/${encodeURIComponent(telegramId)}`),
+      ]);
+
+      if (tradesRes.ok) {
+        const rawTrades = await tradesRes.json();
+        if (Array.isArray(rawTrades) && rawTrades.length > 0) {
+          const base = capitalBase > 0 ? capitalBase : 100;
+          mockData.trades = rawTrades.map((t) => {
+            const amt = parseFloat(t.resultado || 0);
+            const sideLabel = String(t.tipo || "long").toUpperCase();
+            const lev = t.apalancamiento || 10;
+            return {
+              title: `Ethereum ${sideLabel}`,
+              detail: `Apalancamiento ${lev}x · ${formatDateLabel(t.fecha)}`,
+              amount: amt,
+              pct: Number(((amt / base) * 100).toFixed(2)),
+            };
+          });
+        } else {
+          mockData.trades = [];
+        }
+      } else {
+        mockData.trades = [];
+      }
+
+      if (txRes.ok) {
+        const rawTx = await txRes.json();
+        if (Array.isArray(rawTx) && rawTx.length > 0) {
+          mockData.transactions = rawTx.map((tx) => {
+            const tipo = String(tx.tipo || "deposito").toLowerCase();
+            const isOut = tipo === "retiro";
+            const rawAmt = Math.abs(parseFloat(tx.monto || 0));
+            const labelMap = {
+              deposito: "Depósito",
+              retiro: "Retiro",
+              comision: "Comisión",
+              bono: "Bono",
+            };
+            const statusMap = {
+              confirmado: "Completado",
+              procesando: "Pendiente",
+              rechazado: "Rechazado",
+            };
+            return {
+              type: isOut ? "withdraw" : "deposit",
+              label: labelMap[tipo] || tipo,
+              date: `${formatDateLabel(tx.fecha)}${tx.red ? ` · ${tx.red}` : ""}`,
+              amount: isOut ? -rawAmt : rawAmt,
+              status: statusMap[String(tx.estado || "").toLowerCase()] || (tx.estado || "Completado"),
+            };
+          });
+        } else {
+          mockData.transactions = [];
+        }
+      } else {
+        mockData.transactions = [];
+      }
+    } catch (err) {
+      console.warn("No se pudo cargar historial real, manteniendo listas vacías:", err);
+      mockData.trades = [];
+      mockData.transactions = [];
+    }
+  }
+
+  // ========================================================================
+  // CONEXIÓN CON FASTAPI + LIMPIEZA DE DATOS MOCK PARA USUARIOS NUEVOS
+  // ========================================================================
   async function initTelegramBridge() {
-    // 1. Configurar Telegram UI
     if (tg) {
       try {
         tg.ready();
@@ -190,44 +271,110 @@
       }
     }
 
-    // 2. Traer datos reales de la Base de Datos
+    const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryTgId = urlParams.get("dev_telegram_id");
+
+    const realTgId = tgUser && tgUser.id
+      ? String(tgUser.id)
+      : (queryTgId ? String(queryTgId) : null);
+
+    const realName = tgUser
+      ? ([tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ") || tgUser.username || "Trader")
+      : null;
+
+    const realUsername = tgUser && tgUser.username ? tgUser.username : null;
+
+    if (realName) {
+      mockData.user.name = realName;
+    }
+    if (realTgId) {
+      mockData.user.id = realTgId;
+      mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${realTgId}`;
+    }
+
     try {
-      const url = new URL('/api/user/me', window.location.origin);
+      const url = new URL("/api/user/me", window.location.origin);
       const headers = {};
-      
+
       if (tg && tg.initData) {
-        // Si estamos en Telegram, usamos la autenticación real
-        headers['X-Telegram-Init-Data'] = tg.initData;
-      } else {
-        // Si estamos en el navegador (dev), usamos el ID de prueba
-        url.searchParams.append('dev_telegram_id', '78452613');
+        headers["X-Telegram-Init-Data"] = tg.initData;
+      }
+
+      if (realTgId) {
+        url.searchParams.set("dev_telegram_id", realTgId);
+      }
+      if (realName) {
+        url.searchParams.set("dev_nombre", realName);
+      }
+      if (realUsername) {
+        url.searchParams.set("dev_username", realUsername);
       }
 
       const res = await fetch(url.toString(), { headers });
-      
+
       if (res.ok) {
         const data = await res.json();
-        console.log("Datos reales recibidos:", data);
 
-        // 3. Actualizamos el mockData con los datos reales del servidor
-        mockData.user.name = data.nombre || mockData.user.name;
-        mockData.user.id = String(data.telegram_id || mockData.user.id);
-        mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${mockData.user.id}`;
-        
-        mockData.balances.total = parseFloat(data.saldo_total || mockData.balances.total);
-        mockData.balances.frozen = parseFloat(data.saldo_congelado || mockData.balances.frozen);
-        mockData.balances.withdrawable = parseFloat(data.saldo_retirable || mockData.balances.withdrawable);
-        mockData.balances.availableWallet = parseFloat(data.saldo_retirable || mockData.balances.availableWallet);
-        
-        // 4. Volvemos a pintar la pantalla con los datos actualizados
-        renderBalances();
-        renderReferralsView();
+        const resolvedId = String(data.telegram_id || realTgId || mockData.user.id);
+        mockData.user.name = data.nombre || realName || mockData.user.name;
+        mockData.user.id = resolvedId;
+        mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${resolvedId}`;
+
+        const frozenVal = parseFloat(data.saldo_congelado ?? 40);
+        const withdrawableVal = parseFloat(data.saldo_retirable ?? 0);
+        const totalVal = parseFloat(data.saldo_total ?? (frozenVal + withdrawableVal));
+
+        mockData.balances.frozen = Number.isNaN(frozenVal) ? 40.0 : Number(frozenVal.toFixed(2));
+        mockData.balances.withdrawable = Number.isNaN(withdrawableVal) ? 0.0 : Number(withdrawableVal.toFixed(2));
+        mockData.balances.total = Number.isNaN(totalVal)
+          ? Number((mockData.balances.frozen + mockData.balances.withdrawable).toFixed(2))
+          : Number(totalVal.toFixed(2));
+        mockData.balances.availableWallet = mockData.balances.withdrawable;
+
+        // Limpiar datos falsos de Alex por defecto para usuario nuevo
+        mockData.trades = [];
+        mockData.transactions = [];
+        mockData.referrals = [];
+        mockData.referralStats = {
+          total: 0,
+          active: 0,
+          commissions: 0.0,
+        };
+        mockData.balances.dailyYieldPct = 0.0;
+        mockData.balances.dailyDeltaPct = 0.0;
+
+        await syncUserActivityFromBackend(resolvedId, mockData.balances.total);
+
+        if (mockData.trades.length > 0) {
+          const sumPnL = mockData.trades.reduce((acc, item) => acc + Number(item.amount || 0), 0);
+          const pctDay = mockData.balances.total > 0 ? (sumPnL / mockData.balances.total) * 100 : 0;
+          mockData.balances.dailyYieldPct = Number(pctDay.toFixed(2));
+          mockData.balances.dailyDeltaPct = Number(pctDay.toFixed(2));
+        }
       } else {
-        console.error("Error del servidor:", res.status);
+        console.error("Error del servidor en /api/user/me:", res.status);
+        if (realTgId && realTgId !== "78452613") {
+          mockData.trades = [];
+          mockData.transactions = [];
+          mockData.referrals = [];
+          mockData.referralStats = { total: 0, active: 0, commissions: 0.0 };
+        }
       }
     } catch (error) {
       console.error("Error de conexión con FastAPI:", error);
+      if (realTgId && realTgId !== "78452613") {
+        mockData.trades = [];
+        mockData.transactions = [];
+        mockData.referrals = [];
+        mockData.referralStats = { total: 0, active: 0, commissions: 0.0 };
+      }
     }
+
+    renderBalances();
+    renderTradesList();
+    renderReferralsView();
+    renderTransactionsList();
   }
 
   function closeThreeDotsMenu() {
@@ -332,6 +479,16 @@
     const container = $("#tradesListContainer");
     if (!container) return;
 
+    const btn = $("#toggleAllTradesBtn");
+
+    if (!Array.isArray(mockData.trades) || mockData.trades.length === 0) {
+      container.innerHTML = `<div class="empty-state">No hay operaciones aún</div>`;
+      if (btn) btn.style.display = "none";
+      return;
+    }
+
+    if (btn) btn.style.display = "";
+
     const list = mockData.showAllTrades
       ? mockData.trades
       : mockData.trades.slice(0, 5);
@@ -341,7 +498,7 @@
         const isPos = item.amount >= 0;
         const sign = isPos ? "+" : "-";
         const absAmt = formatNumber(Math.abs(item.amount), 2);
-        const pctStr = `${isPos ? "+" : ""}${item.pct.toFixed(2)}%`;
+        const pctStr = `${isPos ? "+" : ""}${Number(item.pct || 0).toFixed(2)}%`;
 
         return `
           <div class="list-row">
@@ -370,7 +527,6 @@
       })
       .join("");
 
-    const btn = $("#toggleAllTradesBtn");
     if (btn) {
       btn.textContent = mockData.showAllTrades ? "Ver menos ‹" : "Ver todo >";
     }
@@ -387,7 +543,7 @@
       ? `${mask} USDT`
       : `${formatNumber(mockData.balances.total, 2)} USDT`;
 
-    $("#totalDeltaText").textContent = `+${mockData.balances.dailyDeltaPct.toFixed(2)}% hoy`;
+    $("#totalDeltaText").textContent = `+${Number(mockData.balances.dailyDeltaPct || 0).toFixed(2)}% hoy`;
 
     $("#frozenBalanceText").textContent = hidden
       ? mask
@@ -397,7 +553,7 @@
       ? mask
       : formatNumber(mockData.balances.withdrawable, 2);
 
-    $("#dailyYieldText").textContent = `+${mockData.balances.dailyYieldPct.toFixed(2)}%`;
+    $("#dailyYieldText").textContent = `+${Number(mockData.balances.dailyYieldPct || 0).toFixed(2)}%`;
 
     $("#walletAvailableText").textContent = hidden
       ? `${mask} USDT`
@@ -418,26 +574,38 @@
     $("#activeReferralsCount").textContent = String(mockData.referralStats.active);
     $("#referralCommissionsText").textContent = formatNumber(mockData.referralStats.commissions, 2);
 
+    const container = $("#referralsListContainer");
+    const toggleBtn = $("#toggleAllReferralsBtn");
+
+    if (!Array.isArray(mockData.referrals) || mockData.referrals.length === 0) {
+      if (container) container.innerHTML = `<div class="empty-state">No hay referidos aún</div>`;
+      if (toggleBtn) toggleBtn.style.display = "none";
+      return;
+    }
+
+    if (toggleBtn) toggleBtn.style.display = "";
+
     const list = mockData.showAllReferrals
       ? mockData.referrals
       : mockData.referrals.slice(0, 4);
 
-    $("#referralsListContainer").innerHTML = list
-      .map((ref) => `
-        <div class="list-row">
-          <div class="row-left">
-            <span class="coin-circle">@</span>
-            <div>
-              <div class="ref-handle">${ref.handle}</div>
-              <div class="row-sub">${ref.timeAgo}</div>
+    if (container) {
+      container.innerHTML = list
+        .map((ref) => `
+          <div class="list-row">
+            <div class="row-left">
+              <span class="coin-circle">@</span>
+              <div>
+                <div class="ref-handle">${ref.handle}</div>
+                <div class="row-sub">${ref.timeAgo}</div>
+              </div>
             </div>
+            <div class="ref-bonus">${ref.bonus}</div>
           </div>
-          <div class="ref-bonus">${ref.bonus}</div>
-        </div>
-      `)
-      .join("");
+        `)
+        .join("");
+    }
 
-    const toggleBtn = $("#toggleAllReferralsBtn");
     if (toggleBtn) {
       toggleBtn.textContent = mockData.showAllReferrals ? "Ver menos ‹" : "Ver todos >";
     }
@@ -457,6 +625,16 @@
   function renderTransactionsList() {
     const container = $("#txListContainer");
     if (!container) return;
+
+    const toggleBtn = $("#toggleAllTxBtn");
+
+    if (!Array.isArray(mockData.transactions) || mockData.transactions.length === 0) {
+      container.innerHTML = `<div class="empty-state">No hay transacciones aún</div>`;
+      if (toggleBtn) toggleBtn.style.display = "none";
+      return;
+    }
+
+    if (toggleBtn) toggleBtn.style.display = "";
 
     const list = mockData.showAllTx
       ? mockData.transactions
@@ -489,7 +667,6 @@
       })
       .join("");
 
-    const toggleBtn = $("#toggleAllTxBtn");
     if (toggleBtn) {
       toggleBtn.textContent = mockData.showAllTx ? "Ver menos ‹" : "Ver todo >";
     }
@@ -581,12 +758,9 @@
       }
     });
 
-    $("#btnRefreshApp").addEventListener("click", () => {
+    $("#btnRefreshApp").addEventListener("click", async () => {
       closeThreeDotsMenu();
-      renderBalances();
-      renderTradesList();
-      renderReferralsView();
-      renderTransactionsList();
+      await initTelegramBridge();
       showToast("Datos sincronizados");
     });
 
@@ -772,8 +946,7 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    initTelegramBridge(); // <-- Ahora esta función es asíncrona y trae los datos reales
+  document.addEventListener("DOMContentLoaded", async () => {
     renderBalances();
     renderChart("1D");
     renderTradesList();
@@ -782,5 +955,6 @@
     syncNetworkSelectors(mockData.selectedNetwork);
     updateWithdrawCalc();
     bindEvents();
+    await initTelegramBridge();
   });
 })();
