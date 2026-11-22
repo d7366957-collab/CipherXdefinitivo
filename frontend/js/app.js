@@ -369,17 +369,17 @@
   const mockData = {
     lang: getSavedLang(),
     user: {
-      name: "Alex",
-      id: "78452613",
-      referralLink: "https://t.me/CipherX_Trade_bot?start=78452613",
+      name: "Trader",
+      id: "000000",
+      referralLink: "https://t.me/CipherX_Trade_bot",
     },
     balances: {
-      total: 1248.32,
-      frozen: 320.00,
-      withdrawable: 928.32,
-      availableWallet: 928.32,
-      dailyYieldPct: 12.68,
-      dailyDeltaPct: 12.68,
+      total: 0.00,
+      frozen: 0.00,
+      withdrawable: 0.00,
+      availableWallet: 0.00,
+      dailyYieldPct: 0.00,
+      dailyDeltaPct: 0.00,
     },
     hiddenBalances: false,
     activeTab: "home",
@@ -405,34 +405,14 @@
       "1A": [10, 19, 26, 39, 45, 52, 60, 66, 73, 78, 84, 90],
     },
 
-    trades: [
-      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 14:32", amount: +18.24, pct: +2.36 },
-      { title: "Ethereum SHORT", detail: "Futuros · Hoy 12:11", amount: -6.12, pct: -0.84 },
-      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 10:05", amount: +14.37, pct: +3.21 },
-      { title: "Ethereum LONG", detail: "Futuros · Hoy 08:47", amount: +9.18, pct: +1.42 },
-      { title: "Ethereum LONG", detail: "Apalancamiento 10x · Hoy 06:21", amount: +11.06, pct: +1.96 },
-      { title: "Ethereum SHORT", detail: "Futuros · Hoy 03:18", amount: -4.85, pct: -0.62 },
-    ],
-
-    referrals: [
-      { handle: "@javier23", timeAgo: "Hace 2 horas", bonus: "+1.00 USDT" },
-      { handle: "@maria_fox", timeAgo: "Hace 5 horas", bonus: "+1.00 USDT" },
-      { handle: "@crypto_jp", timeAgo: "Hace 1 día", bonus: "+1.00 USDT" },
-      { handle: "@sofia.trader", timeAgo: "Hace 1 día", bonus: "+1.00 USDT" },
-      { handle: "@dani_web3", timeAgo: "Hace 2 días", bonus: "+1.00 USDT" },
-    ],
+    trades: [],
+    referrals: [],
     referralStats: {
-      total: 128,
-      active: 86,
-      commissions: 248.32,
+      total: 0,
+      active: 0,
+      commissions: 0.0,
     },
-
-    transactions: [
-      { type: "deposit", label: "Depósito", date: "14 abr 2025 · 10:24", amount: +100.0, status: "Completado" },
-      { type: "withdraw", label: "Retiro", date: "12 abr 2025 · 18:32", amount: -50.0, status: "Completado" },
-      { type: "deposit", label: "Depósito", date: "10 abr 2025 · 09:15", amount: +200.0, status: "Completado" },
-      { type: "withdraw", label: "Retiro", date: "6 abr 2025 · 21:47", amount: -30.0, status: "Completado" },
-    ],
+    transactions: [],
   };
 
   function t(key, params = {}) {
@@ -885,11 +865,11 @@
         mockData.user.id = resolvedId;
         mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${resolvedId}`;
 
-        const frozenVal = parseFloat(data.saldo_congelado ?? 40);
+        const frozenVal = parseFloat(data.saldo_congelado ?? 0);
         const withdrawableVal = parseFloat(data.saldo_retirable ?? 0);
         const totalVal = parseFloat(data.saldo_total ?? (frozenVal + withdrawableVal));
 
-        mockData.balances.frozen = Number.isNaN(frozenVal) ? 40.0 : Number(frozenVal.toFixed(2));
+        mockData.balances.frozen = Number.isNaN(frozenVal) ? 0.0 : Number(frozenVal.toFixed(2));
         mockData.balances.withdrawable = Number.isNaN(withdrawableVal) ? 0.0 : Number(withdrawableVal.toFixed(2));
         mockData.balances.total = Number.isNaN(totalVal)
           ? Number((mockData.balances.frozen + mockData.balances.withdrawable).toFixed(2))
@@ -917,21 +897,9 @@
         }
       } else {
         console.error("Error del servidor en /api/user/me:", res.status);
-        if (realTgId && realTgId !== "78452613") {
-          mockData.trades = [];
-          mockData.transactions = [];
-          mockData.referrals = [];
-          mockData.referralStats = { total: 0, active: 0, commissions: 0.0 };
-        }
       }
     } catch (error) {
       console.error("Error de conexión con FastAPI:", error);
-      if (realTgId && realTgId !== "78452613") {
-        mockData.trades = [];
-        mockData.transactions = [];
-        mockData.referrals = [];
-        mockData.referralStats = { total: 0, active: 0, commissions: 0.0 };
-      }
     }
 
     renderBalances();
