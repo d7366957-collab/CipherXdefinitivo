@@ -67,6 +67,9 @@ class User(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     is_banned = Column(Boolean, default=False, nullable=False)
+    
+    # 👇 NUEVA COLUMNA AÑADIDA
+    deposito_realizado = Column(Boolean, default=False, nullable=False)
 
     transactions = relationship(
         "Transaction", back_populates="user", cascade="all, delete-orphan"
@@ -702,6 +705,14 @@ def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
+
+    # 👇 NUEVA REGLA AÑADIDA AQUÍ
+    if not getattr(user, "deposito_realizado", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Para solicitar un retiro, primero debes realizar al menos un depósito en la plataforma.",
+        )
+    # 👆 FIN DE LA NUEVA REGLA
 
     total_a_descontar = quantize_usdt(monto_q + WITHDRAW_FEE_USDT)
     saldo_retirable_actual = Decimal(user.saldo_retirable or 0)
