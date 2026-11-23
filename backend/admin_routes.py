@@ -5,13 +5,13 @@ from pydantic import BaseModel
 from typing import Optional
 from decimal import Decimal
 
-# IMPORTACIONES CORREGIDAS (Sin el punto)
 from database import get_db
-from models import User, Transaction
 from aiogram import Bot
 
+# Si BOT_TOKEN no está en el entorno, no creamos el bot para evitar errores
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
+
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "cipherx2024") 
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -49,6 +49,9 @@ def admin_login(data: LoginRequest):
 
 @router.get("/users")
 def get_users(telegram_id: Optional[str] = None, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    # IMPORTACIÓN LOCAL AQUÍ PARA EVITAR EL ERROR CIRCULAR
+    from main import User
+    
     query = db.query(User)
     if telegram_id:
         query = query.filter(User.telegram_id == telegram_id)
@@ -57,6 +60,8 @@ def get_users(telegram_id: Optional[str] = None, db: Session = Depends(get_db), 
 
 @router.post("/users/{tg_id}/balance")
 def edit_balance(tg_id: str, data: BalanceRequest, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import User
+    
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user: raise HTTPException(404, "Usuario no encontrado")
     
@@ -72,6 +77,8 @@ def edit_balance(tg_id: str, data: BalanceRequest, db: Session = Depends(get_db)
 
 @router.post("/users/{tg_id}/ban")
 def ban_user(tg_id: str, data: BanRequest, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import User
+    
     user = db.query(User).filter(User.telegram_id == tg_id).first()
     if not user: raise HTTPException(404, "Usuario no encontrado")
     user.is_banned = data.banear
@@ -80,12 +87,15 @@ def ban_user(tg_id: str, data: BanRequest, db: Session = Depends(get_db), _=Depe
 
 @router.get("/withdrawals")
 def get_withdrawals(db: Session = Depends(get_db), _=Depends(verify_admin_token)):
-    # Buscamos transacciones de retiro que estén "procesando" o "pendiente"
+    from main import Transaction
+    
     withdrawals = db.query(Transaction).filter(Transaction.tipo == 'retiro', Transaction.estado.in_(['procesando', 'pendiente'])).all()
     return [{"id": w.id, "user_id": w.user_id, "monto": float(w.monto), "red": w.red, "fecha": str(w.fecha)} for w in withdrawals]
 
 @router.post("/withdrawals/{tx_id}/approve")
 def approve_withdrawal(tx_id: int, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import Transaction
+    
     tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
     if not tx: raise HTTPException(404, "Transacción no encontrada")
     tx.estado = "confirmado"
@@ -94,12 +104,13 @@ def approve_withdrawal(tx_id: int, db: Session = Depends(get_db), _=Depends(veri
 
 @router.post("/withdrawals/{tx_id}/reject")
 def reject_withdrawal(tx_id: int, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import User, Transaction
+    
     tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
     if not tx: raise HTTPException(404, "Transacción no encontrada")
     
     user = db.query(User).filter(User.id == tx.user_id).first()
     if user:
-        # Devolvemos el monto + la comisión (0.15)
         reembolso = Decimal(str(tx.monto)) + Decimal("0.150000")
         user.saldo_retirable = Decimal(str(user.saldo_retirable)) + reembolso
         
@@ -109,18 +120,21 @@ def reject_withdrawal(tx_id: int, db: Session = Depends(get_db), _=Depends(verif
 
 @router.post("/sorteo-masivo")
 def sorteo_masivo(data: SorteoRequest, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import User, Transaction
+    
     users = db.query(User).all()
     monto_decimal = Decimal(str(data.monto))
     
     for u in users:
         u.saldo_retirable = Decimal(str(u.saldo_retirable)) + monto_decimal
-        # Creamos el registro en el historial del usuario
         db.add(Transaction(user_id=u.id, tipo="bono", monto=monto_decimal, estado="confirmado", red="Sorteo"))
     db.commit()
     return {"status": "ok", "beneficiados": len(users)}
 
 @router.post("/broadcast")
 async def broadcast_message(data: BroadcastRequest, db: Session = Depends(get_db), _=Depends(verify_admin_token)):
+    from main import User
+    
     if not bot: return {"error": "Bot no configurado en el .env"}
     users = db.query(User).all()
     enviados = 0
