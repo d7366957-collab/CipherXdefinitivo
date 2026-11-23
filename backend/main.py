@@ -86,7 +86,7 @@ class Transaction(Base):
     tipo = Column(String(20), nullable=False)       # deposito | retiro | comision | bono
     monto = Column(Numeric(18, 6), nullable=False)
     red = Column(String(16), nullable=True)         # TON | TRC20 | BEP20
-    estado = Column(String(24), nullable=False, default="procesando")
+    estado = Column(String(24), nullable=False, default="pendiente")
     fecha = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="transactions")
@@ -376,7 +376,7 @@ def get_or_create_user_with_bonus(
                         tipo="bono",
                         monto=REFERRAL_BONUS_CONGELADO,
                         red=None,
-                        estado="confirmado",
+                        estado="completado",
                     )
                 )
                 updated = True
@@ -413,7 +413,7 @@ def get_or_create_user_with_bonus(
                 tipo="bono",
                 monto=REFERRAL_BONUS_CONGELADO,
                 red=None,
-                estado="confirmado",
+                estado="completado",
             )
         )
 
@@ -560,7 +560,7 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
                 tipo="bono",
                 monto=REFERRAL_BONUS_CONGELADO,
                 red=None,
-                estado="confirmado",
+                estado="completado",
             )
         )
 
@@ -588,7 +588,7 @@ def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
         .filter(
             Transaction.user_id == user.id,
             Transaction.tipo == "comision",
-            Transaction.estado == "confirmado",
+            Transaction.estado == "completado",
         )
         .scalar()
     )
@@ -601,7 +601,7 @@ def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
             .filter(
                 Transaction.user_id == ref.id,
                 Transaction.tipo == "deposito",
-                Transaction.estado == "confirmado",
+                Transaction.estado == "completado",
             )
             .first()
             is not None
@@ -650,7 +650,7 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
         tipo="deposito",
         monto=monto_q,
         red=payload.red,
-        estado="confirmado",
+        estado="completado",
     )
     db.add(deposit_tx)
     db.flush()
@@ -669,7 +669,7 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
                     tipo="comision",
                     monto=comision_patrocinador,
                     red=payload.red,
-                    estado="confirmado",
+                    estado="completado",
                 )
             )
 
@@ -717,7 +717,7 @@ def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)
         tipo="retiro",
         monto=monto_q,
         red=payload.red,
-        estado="procesando",
+        estado="pendiente",
     )
     db.add(withdraw_tx)
     db.commit()
@@ -747,12 +747,12 @@ def approve_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Retiro no encontrado"
         )
-    if tx.estado != "procesando":
+    if tx.estado not in ("pendiente", "en_lote"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El retiro ya está en estado '{tx.estado}'",
         )
-    tx.estado = "confirmado"
+    tx.estado = "completado"
     db.commit()
     db.refresh(tx)
     return tx
@@ -769,7 +769,7 @@ def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Retiro no encontrado"
         )
-    if tx.estado != "procesando":
+    if tx.estado not in ("pendiente", "en_lote"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El retiro ya está en estado '{tx.estado}'",
