@@ -153,6 +153,8 @@ def get_users(
                 Decimal(str(u.saldo_congelado or 0)) + Decimal(str(u.saldo_retirable or 0))
             ),
             "banned": bool(getattr(u, "is_banned", False)),
+            # 👇 NUEVA LÍNEA AÑADIDA AQUÍ
+            "deposito_realizado": bool(getattr(u, "deposito_realizado", False)),
         }
         for u in users
     ]
@@ -391,3 +393,24 @@ async def broadcast_message(
         await active_bot.session.close()
 
     return {"status": "ok", "enviados": enviados, "errores": errores}
+
+
+# 👇 NUEVA RUTA AÑADIDA AQUÍ
+@router.post("/users/{tg_id}/marcar-deposito")
+def marcar_deposito(
+    tg_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(verify_admin_token),
+):
+    User, _ = _get_models()
+
+    tg_int = _parse_int_id(tg_id, "telegram_id")
+    user = db.query(User).filter(User.telegram_id == tg_int).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    user.deposito_realizado = True
+    db.commit()
+    db.refresh(user)
+    
+    return {"status": "ok", "telegram_id": user.telegram_id, "deposito_realizado": True}
