@@ -1,0 +1,21 @@
+:root { --bg: #0A0B0E; --card: #15171C; --cyan: #00D1FF; --green: #00FF88; --red: #FF4D4D; --text: #FFFFFF; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; }
+body { background: var(--bg); color: var(--text); padding: 20px; }
+.login-box { max-width: 300px; margin: 100px auto; background: var(--card); padding: 20px; border-radius: 10px; text-align: center; }
+input, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #000; color: white; border: 1px solid #333; border-radius: 5px; }
+button { width: 100%; padding: 10px; background: var(--cyan); color: black; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+.dashboard { display: none; max-width: 900px; margin: 0 auto; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tab { padding: 10px; background: var(--card); border-radius: 5px; cursor: pointer; border: 1px solid #333; }
+.tab.active { border-color: var(--cyan); color: var(--cyan); }
+.panel { display: none; background: var(--card); padding: 20px; border-radius: 10px; }
+.panel.active { display: block; }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+th { color: var(--cyan); }
+.form-group { margin-bottom: 15px; }
+.btn-sm { padding: 5px 10px; width: auto; font-size: 12px; }
+.btn-red { background: var(--red); color: white; }
+.btn-green { background: var(--green); color: black; }
+.btn-logout { width: auto; margin-left: auto; background: #333; color: white; }
+.input-search { margin-bottom: 15px; }
