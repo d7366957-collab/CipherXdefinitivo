@@ -396,9 +396,9 @@
     showAllTx: false,
 
     depositAddresses: {
-      TON: "UQBx7k9mP2nR5vT8wL1zC4jH6gF3dS9aE2yK7mN4pQ8rV1xZ",
-      TRC20: "TXYZ9h7k3s8f4Jm2Qv6L9p1R8t5Wq3eZ1x1234",
-      BEP20: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+      TON: "UQA1jdxwaZ9m8yibRDs_iv5dzUIkRUr_LQvw_oU9cUhF1KTE",
+      TRC20: "TWbhSCsVSQ2Nihoc2jzzheM9Exv8y11LXF",
+      BEP20: "0xA426B5f7970135D9651B4523a70c9871F2c03E7b",
     },
 
     chartSeries: {
