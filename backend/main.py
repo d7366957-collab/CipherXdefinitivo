@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Column, BigInteger, String, Numeric, DateTime, ForeignKey, func
+from sqlalchemy import Column, BigInteger, String, Numeric, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.orm import Session, relationship
 
 from auth import (
@@ -17,6 +17,9 @@ from auth import (
     verify_telegram_webapp,
 )
 from database import Base, engine, get_db
+
+# Importamos las rutas del panel de admin
+from admin_routes import router as admin_router
 
 # ==========================================================================
 # Modelos ORM (SQLAlchemy)
@@ -33,6 +36,9 @@ class User(Base):
     saldo_retirable = Column(Numeric(18, 6), nullable=False, default=Decimal("0.000000"))
     id_patrocinador = Column(BigInteger, ForeignKey("users.telegram_id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    # NUEVO CAMPO PARA EL BANEO
+    is_banned = Column(Boolean, default=False, nullable=False)
 
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     trades = relationship("Trade", back_populates="user", cascade="all, delete-orphan")
@@ -66,7 +72,7 @@ class Trade(Base):
     user = relationship("User", back_populates="trades")
 
 
-# Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine) # Si usas Alembic, esto está comentado.
 
 
 # ==========================================================================
@@ -382,7 +388,10 @@ def get_or_create_user_with_bonus(
 # Aplicación FastAPI
 # ==========================================================================
 
-app = FastAPI(title="CipherX API", version="0.4.0")
+app = FastAPI(title="CipherX API", version="0.5.0-admin")
+
+# CONECTAMOS EL ROUTER DEL ADMIN AQUÍ
+app.include_router(admin_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -395,7 +404,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "cipherx-api", "phase": "4-users-bonus-cron"}
+    return {"status": "ok", "service": "cipherx-api", "phase": "5-admin"}
 
 
 @app.get("/api/user/me", response_model=UserOut)
@@ -426,6 +435,8 @@ def get_current_user_me(
             username=auth_user.username,
             id_patrocinador=resolved_sponsor,
         )
+        if getattr(user, 'is_banned', False):
+            raise HTTPException(status_code=403, detail="Cuenta suspendida por actividad sospechosa.")
         return build_user_out(user)
 
     target_id = dev_telegram_id or 78452613
@@ -437,6 +448,8 @@ def get_current_user_me(
         username=dev_username,
         id_patrocinador=resolved_sponsor,
     )
+    if getattr(user, 'is_banned', False):
+        raise HTTPException(status_code=403, detail="Cuenta suspendida por actividad sospechosa.")
     return build_user_out(user)
 
 
