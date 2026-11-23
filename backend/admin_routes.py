@@ -36,6 +36,16 @@ def _get_admin_password() -> str:
     return pwd or "cipherx2024"
 
 
+def _get_models():
+    main_mod = sys.modules.get("backend.main") or sys.modules.get("main")
+    if main_mod is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Módulo principal no inicializado",
+        )
+    return main_mod.User, main_mod.Transaction
+
+
 BOT_TOKEN = _get_bot_token()
 bot: Optional[Bot] = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 
@@ -123,7 +133,7 @@ def get_users(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import User
+    User, _ = _get_models()
 
     query = db.query(User)
     if telegram_id and str(telegram_id).strip():
@@ -139,7 +149,9 @@ def get_users(
             "username": u.username,
             "congelado": float(u.saldo_congelado or 0),
             "retirable": float(u.saldo_retirable or 0),
-            "total": float(Decimal(str(u.saldo_congelado or 0)) + Decimal(str(u.saldo_retirable or 0))),
+            "total": float(
+                Decimal(str(u.saldo_congelado or 0)) + Decimal(str(u.saldo_retirable or 0))
+            ),
             "banned": bool(getattr(u, "is_banned", False)),
         }
         for u in users
@@ -153,7 +165,7 @@ def edit_balance(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import User
+    User, _ = _get_models()
 
     tg_int = _parse_int_id(tg_id, "telegram_id")
     user = db.query(User).filter(User.telegram_id == tg_int).first()
@@ -210,7 +222,7 @@ def ban_user(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import User
+    User, _ = _get_models()
 
     tg_int = _parse_int_id(tg_id, "telegram_id")
     user = db.query(User).filter(User.telegram_id == tg_int).first()
@@ -228,7 +240,7 @@ def get_withdrawals(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import Transaction, User
+    User, Transaction = _get_models()
 
     rows = (
         db.query(Transaction, User)
@@ -261,7 +273,7 @@ def approve_withdrawal(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import Transaction
+    _, Transaction = _get_models()
 
     tx = (
         db.query(Transaction)
@@ -288,7 +300,7 @@ def reject_withdrawal(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import Transaction, User
+    User, Transaction = _get_models()
 
     tx = (
         db.query(Transaction)
@@ -320,7 +332,7 @@ def sorteo_masivo(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import Transaction, User
+    User, Transaction = _get_models()
 
     monto_decimal = _to_decimal(data.monto, "monto")
     users = db.query(User).all()
@@ -347,7 +359,7 @@ async def broadcast_message(
     db: Session = Depends(get_db),
     _=Depends(verify_admin_token),
 ):
-    from main import User
+    User, _ = _get_models()
 
     active_bot = bot
     current_token = _get_bot_token()
