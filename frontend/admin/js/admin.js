@@ -1,83 +1,142 @@
-let token = localStorage.getItem('adminToken');
+const adminToken = localStorage.getItem('adminToken');
 
-if (token) {
+if (adminToken) {
     document.getElementById('loginView').style.display = 'none';
     document.getElementById('dashboardView').style.display = 'block';
     loadUsers();
 }
 
+function getAuthHeaders(includeJson = false) {
+    const headers = {};
+    if (adminToken) {
+        headers['Authorization'] = `Bearer ${adminToken}`;
+    }
+    if (includeJson) {
+        headers['Content-Type'] = 'application/json';
+    }
+    return headers;
+}
+
+async function parseErrorMessage(res, fallback = 'Error en la solicitud') {
+    try {
+        const err = await res.json();
+        return err.detail || err.message || `${fallback} (HTTP ${res.status})`;
+    } catch (_) {
+        return `${fallback} (HTTP ${res.status})`;
+    }
+}
+
 async function doLogin() {
     const pass = document.getElementById('adminPass').value;
     const res = await fetch('/api/admin/login', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: pass})
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass })
     });
     if (res.ok) {
         const data = await res.json();
         localStorage.setItem('adminToken', data.token);
         location.reload();
-    } else { alert('Contraseña incorrecta'); }
+    } else {
+        const msg = await parseErrorMessage(res, 'Contraseña incorrecta');
+        alert(msg);
+    }
 }
 
-function logout() { localStorage.removeItem('adminToken'); location.reload(); }
+function logout() {
+    localStorage.removeItem('adminToken');
+    location.reload();
+}
 
-function switchTab(tabName, event) {
+function switchTab(tabName, evt) {
+    const activeEvent = evt || window.event;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('panel-' + tabName).classList.add('active');
+    if (activeEvent && activeEvent.target) {
+        activeEvent.target.classList.add('active');
+    }
+    const panel = document.getElementById('panel-' + tabName);
+    if (panel) {
+        panel.classList.add('active');
+    }
     if (tabName === 'users') loadUsers();
     if (tabName === 'withdrawals') loadWithdrawals();
 }
 
 async function loadUsers() {
-    const search = document.getElementById('searchId').value;
+    const search = encodeURIComponent((document.getElementById('searchId').value || '').trim());
     const res = await fetch(`/api/admin/users?telegram_id=${search}`, {
-        headers: {'Authorization': `Bearer ${token}`}
+        headers: getAuthHeaders(false)
     });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudieron cargar los usuarios');
+        alert(msg);
+        return;
+    }
     const users = await res.json();
     document.getElementById('usersTable').innerHTML = users.map(u => `
         <tr>
             <td>${u.id}</td>
             <td>${u.nombre || 'Sin nombre'} ${u.banned ? '🚫' : ''}</td>
-            <td>${u.congelado.toFixed(2)}</td>
-            <td>${u.retirable.toFixed(2)}</td>
+            <td>${Number(u.congelado || 0).toFixed(2)}</td>
+            <td>${Number(u.retirable || 0).toFixed(2)}</td>
             <td>
                 <button class="btn-sm" onclick="editBalance('${u.id}', 'retirable', 'sumar')">+10 Ret</button>
-                <button class="btn-sm btn-red" onclick="toggleBan('${u.id}', ${u.banned})">${u.banned ? 'Desbanear' : 'Banear'}</button>
+                <button class="btn-sm btn-red" onclick="toggleBan('${u.id}', ${Boolean(u.banned)})">${u.banned ? 'Desbanear' : 'Banear'}</button>
             </td>
         </tr>
     `).join('');
 }
 
 async function editBalance(id, campo, accion) {
-    const monto = prompt("Monto a modificar:", "10");
-    if (!monto) return;
-    await fetch(`/api/admin/users/${id}/balance`, {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({campo, accion, monto: parseFloat(monto)})
+    const montoStr = prompt('Monto a modificar:', '10');
+    if (!montoStr) return;
+    const monto = parseFloat(montoStr);
+    if (Number.isNaN(monto) || monto <= 0) {
+        return alert('Ingresa un monto válido mayor a 0');
+    }
+    const res = await fetch(`/api/admin/users/${id}/balance`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({ campo, accion, monto })
     });
-    loadUsers();
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudo actualizar el saldo');
+        return alert(msg);
+    }
+    await loadUsers();
 }
 
 async function toggleBan(id, isBanned) {
     if (!confirm(`¿Seguro que quieres ${isBanned ? 'desbanear' : 'banear'} a este usuario?`)) return;
-    await fetch(`/api/admin/users/${id}/ban`, {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({banear: !isBanned})
+    const res = await fetch(`/api/admin/users/${id}/ban`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({ banear: !isBanned })
     });
-    loadUsers();
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudo cambiar el estado de baneo');
+        return alert(msg);
+    }
+    await loadUsers();
 }
 
 async function loadWithdrawals() {
-    const res = await fetch('/api/admin/withdrawals', { headers: {'Authorization': `Bearer ${token}`} });
+    const res = await fetch('/api/admin/withdrawals', {
+        headers: getAuthHeaders(false)
+    });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudieron cargar los retiros');
+        alert(msg);
+        return;
+    }
     const data = await res.json();
     document.getElementById('withdrawalsTable').innerHTML = data.map(w => `
         <tr>
             <td>${w.id}</td>
-            <td>${w.user_id}</td>
+            <td>${w.telegram_id || w.user_id}</td>
             <td>${w.monto} USDT</td>
-            <td>${w.red}</td>
+            <td>${w.red || '-'}</td>
             <td>
                 <button class="btn-sm btn-green" onclick="approveTx(${w.id})">Aprobar</button>
                 <button class="btn-sm btn-red" onclick="rejectTx(${w.id})">Rechazar</button>
@@ -87,24 +146,45 @@ async function loadWithdrawals() {
 }
 
 async function approveTx(id) {
-    await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST', headers: {'Authorization': `Bearer ${token}`} });
-    loadWithdrawals();
+    const res = await fetch(`/api/admin/withdrawals/${id}/approve`, {
+        method: 'POST',
+        headers: getAuthHeaders(false)
+    });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudo aprobar el retiro');
+        return alert(msg);
+    }
+    await loadWithdrawals();
 }
 
 async function rejectTx(id) {
-    await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST', headers: {'Authorization': `Bearer ${token}`} });
-    loadWithdrawals();
+    const res = await fetch(`/api/admin/withdrawals/${id}/reject`, {
+        method: 'POST',
+        headers: getAuthHeaders(false)
+    });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudo rechazar el retiro');
+        return alert(msg);
+    }
+    await loadWithdrawals();
 }
 
 async function runSorteo() {
     const monto = parseFloat(document.getElementById('sorteoMonto').value);
-    if (!monto) return alert('Ingresa un monto');
+    if (Number.isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido');
     if (!confirm(`¿Acreditar ${monto} USDT a TODOS los usuarios?`)) return;
-    await fetch('/api/admin/sorteo-masivo', {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({monto})
+    const res = await fetch('/api/admin/sorteo-masivo', {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({ monto })
     });
-    alert('Sorteo ejecutado con éxito');
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'Error al ejecutar la acreditación masiva');
+        return alert(msg);
+    }
+    const data = await res.json();
+    alert(`Acreditación ejecutada con éxito (${data.beneficiados ?? 'todos'} usuarios)`);
+    await loadUsers();
 }
 
 async function runBroadcast() {
@@ -112,9 +192,14 @@ async function runBroadcast() {
     if (!mensaje) return alert('Escribe un mensaje');
     if (!confirm('¿Enviar este mensaje a TODOS los usuarios?')) return;
     const res = await fetch('/api/admin/broadcast', {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({mensaje})
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({ mensaje })
     });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'Error al enviar el broadcast');
+        return alert(msg);
+    }
     const data = await res.json();
     alert(`Mensajes enviados: ${data.enviados}`);
 }
