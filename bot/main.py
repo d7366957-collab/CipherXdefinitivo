@@ -34,21 +34,24 @@ USER_LANGS: dict[int, str] = {}
 CAPTIONS = {
     "es": (
         "🛡️ <b>CipherX: El futuro de tus finanzas.</b>\n\n"
-        "Tu dinero seguro, creciendo todos los días con las estrategias de nuestro equipo de traders.\n\n"
+        "Tu dinero seguro, creciendo todos los días con las estrategias de nuestro equipo de traders.\n"
+        "✅ Rendimientos diarios garantizados del 0.6% al 0.9%.\n\n"
         "💳 Retiros directos a tu billetera personal (TRC20, BEP20, TON).\n"
         "🎁 Bono de bienvenida de 40 USDT incluido.\n\n"
         "👇 <i>Abre la Mini App y toma el control.</i>"
     ),
     "ru": (
         "🛡️ <b>CipherX: Будущее ваших финансов.</b>\n\n"
-        "Ваши средства под защитой и растут каждый день благодаря стратегиям нашей команды трейдеров.\n\n"
+        "Ваши средства под защитой и растут каждый день благодаря стратегиям нашей команды трейдеров.\n"
+        "✅ Гарантированная дневная доходность от 0.6% до 0.9%.\n\n"
         "💳 Прямые выводы на ваш личный кошелёк (TRC20, BEP20, TON).\n"
         "🎁 Приветственный бонус 40 USDT уже включён.\n\n"
         "👇 <i>Откройте Mini App и возьмите управление в свои руки.</i>"
     ),
     "en": (
         "🛡️ <b>CipherX: The future of your finances.</b>\n\n"
-        "Your funds safe, growing every day with the strategies of our trading team.\n\n"
+        "Your funds safe, growing every day with the strategies of our trading team.\n"
+        "✅ Guaranteed daily returns from 0.6% to 0.9%.\n\n"
         "💳 Direct withdrawals to your personal wallet (TRC20, BEP20, TON).\n"
         "🎁 40 USDT welcome bonus included.\n\n"
         "👇 <i>Open the Mini App and take control.</i>"
@@ -112,6 +115,9 @@ def build_start_keyboard(lang: str, payload_arg: str = "") -> InlineKeyboardMark
                     text=OPEN_APP_TEXT.get(lang, OPEN_APP_TEXT["es"]),
                     web_app=WebAppInfo(url=webapp_target),
                 )
+            ],
+            [
+                InlineKeyboardButton(text="💬 Soporte / Support", url="https://t.me/YordanSoporte")
             ],
             [
                 InlineKeyboardButton(text="🇪🇸 ES", callback_data="set_lang:es"),
