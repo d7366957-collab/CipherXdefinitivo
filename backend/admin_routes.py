@@ -288,7 +288,7 @@ def approve_withdrawal(
             detail=f"El retiro ya está en estado '{tx.estado}'",
         )
 
-    tx.estado = "confirmado"
+    tx.estado = "completado"
     db.commit()
     db.refresh(tx)
     return {"status": "ok", "id": tx.id, "estado": tx.estado}
@@ -345,7 +345,7 @@ def sorteo_masivo(
                 tipo="bono",
                 monto=monto_decimal,
                 estado="completado",
-                red="None",
+                red=None,
             )
         )
 
