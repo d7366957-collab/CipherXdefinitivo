@@ -344,7 +344,7 @@ def sorteo_masivo(
                 user_id=u.id,
                 tipo="bono",
                 monto=monto_decimal,
-                estado="confirmado",
+                estado="completado",
                 red="Sorteo",
             )
         )
