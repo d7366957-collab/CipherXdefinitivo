@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - CipherX</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div id="loginView" class="login-box">
+        <h2>CipherX Admin</h2>
+        <input type="password" id="adminPass" placeholder="Contraseña de Admin">
+        <button onclick="doLogin()">Entrar</button>
+    </div>
+
+    <div id="dashboardView" class="dashboard">
+        <h1>Panel de Control</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('users', event)">Usuarios</div>
+            <div class="tab" onclick="switchTab('withdrawals', event)">Retiros</div>
+            <div class="tab" onclick="switchTab('marketing', event)">Marketing</div>
+            <button onclick="logout()" class="btn-logout">Salir</button>
+        </div>
+
+        <div id="panel-users" class="panel active">
+            <input type="text" id="searchId" placeholder="Buscar por ID de Telegram..." oninput="loadUsers()" class="input-search">
+            <table>
+                <thead><tr><th>ID</th><th>Nombre</th><th>Congelado</th><th>Retirable</th><th>Acciones</th></tr></thead>
+                <tbody id="usersTable"></tbody>
+            </table>
+        </div>
+
+        <div id="panel-withdrawals" class="panel">
+            <table>
+                <thead><tr><th>ID Transacción</th><th>Usuario</th><th>Monto</th><th>Red</th><th>Acciones</th></tr></thead>
+                <tbody id="withdrawalsTable"></tbody>
+            </table>
+        </div>
+
+        <div id="panel-marketing" class="panel">
+            <div class="form-group">
+                <label>Sorteo Masivo (Acreditar a TODOS)</label>
+                <input type="number" id="sorteoMonto" placeholder="Ej: 20">
+                <button onclick="runSorteo()" class="btn-green">Ejecutar Sorteo</button>
+            </div>
+            <div class="form-group">
+                <label>Broadcast (Usa {name})</label>
+                <textarea id="broadcastMsg" placeholder="¡Felicidades {name}! Has ganado..."></textarea>
+                <button onclick="runBroadcast()">Enviar Broadcast</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/admin.js"></script>
+</body>
+          </html>
