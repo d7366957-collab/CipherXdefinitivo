@@ -67,8 +67,6 @@ class User(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     is_banned = Column(Boolean, default=False, nullable=False)
-    
-    # 👇 NUEVA COLUMNA AÑADIDA
     deposito_realizado = Column(Boolean, default=False, nullable=False)
 
     transactions = relationship(
@@ -157,6 +155,68 @@ def extract_start_param_from_init_data(init_data: Optional[str]) -> Optional[str
         return None
 
 
+def user_has_completed_deposit(db: Session, user: User) -> bool:
+    """Verifica si el usuario es inversor (al menos 1 depósito completado)."""
+    if bool(getattr(user, "deposito_realizado", False)):
+        return True
+    has_tx = (
+        db.query(Transaction.id)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.tipo == "deposito",
+            Transaction.estado == "completado",
+        )
+        .first()
+        is not None
+    )
+    if has_tx and not user.deposito_realizado:
+        user.deposito_realizado = True
+        db.flush()
+    return has_tx
+
+
+def apply_credited_deposit(
+    db: Session,
+    user: User,
+    monto: Decimal,
+    red: Literal["TON", "TRC20", "BEP20"],
+) -> tuple[Transaction, Decimal]:
+    """Acredita un depósito completado, marca al usuario como inversor y paga comisión al patrocinador."""
+    monto_q = quantize_usdt(monto)
+    user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + monto_q)
+    user.deposito_realizado = True
+
+    deposit_tx = Transaction(
+        user_id=user.id,
+        tipo="deposito",
+        monto=monto_q,
+        red=red,
+        estado="completado",
+    )
+    db.add(deposit_tx)
+    db.flush()
+
+    comision_patrocinador = Decimal("0.000000")
+    if user.id_patrocinador:
+        sponsor = db.query(User).filter(User.telegram_id == user.id_patrocinador).first()
+        if sponsor:
+            comision_patrocinador = quantize_usdt(monto_q * REFERRAL_DEPOSIT_COMMISSION_RATE)
+            sponsor.saldo_retirable = quantize_usdt(
+                Decimal(sponsor.saldo_retirable or 0) + comision_patrocinador
+            )
+            db.add(
+                Transaction(
+                    user_id=sponsor.id,
+                    tipo="comision",
+                    monto=comision_patrocinador,
+                    red=red,
+                    estado="completado",
+                )
+            )
+
+    return deposit_tx, comision_patrocinador
+
+
 def generate_daily_trades_amounts(capital_base: Decimal, num_trades: int = 5) -> List[Decimal]:
     daily_pct = Decimal(
         str(round(random.uniform(float(DAILY_MIN_RETURN_PCT), float(DAILY_MAX_RETURN_PCT)), 6))
@@ -237,6 +297,7 @@ class UserOut(BaseModel):
     saldo_congelado: Decimal
     saldo_retirable: Decimal
     saldo_total: Decimal
+    deposito_realizado: bool = False
     id_patrocinador: Optional[int] = None
     created_at: datetime
 
@@ -338,6 +399,7 @@ def build_user_out(user: User) -> UserOut:
         saldo_congelado=congelado,
         saldo_retirable=retirable,
         saldo_total=quantize_usdt(congelado + retirable),
+        deposito_realizado=bool(getattr(user, "deposito_realizado", False)),
         id_patrocinador=user.id_patrocinador,
         created_at=created,
     )
@@ -647,35 +709,12 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + monto_q)
-    deposit_tx = Transaction(
-        user_id=user.id,
-        tipo="deposito",
+    deposit_tx, comision_patrocinador = apply_credited_deposit(
+        db=db,
+        user=user,
         monto=monto_q,
         red=payload.red,
-        estado="completado",
     )
-    db.add(deposit_tx)
-    db.flush()
-
-    comision_patrocinador = Decimal("0.000000")
-    if user.id_patrocinador:
-        sponsor = db.query(User).filter(User.telegram_id == user.id_patrocinador).first()
-        if sponsor:
-            comision_patrocinador = quantize_usdt(monto_q * REFERRAL_DEPOSIT_COMMISSION_RATE)
-            sponsor.saldo_retirable = quantize_usdt(
-                Decimal(sponsor.saldo_retirable or 0) + comision_patrocinador
-            )
-            db.add(
-                Transaction(
-                    user_id=sponsor.id,
-                    tipo="comision",
-                    monto=comision_patrocinador,
-                    red=payload.red,
-                    estado="completado",
-                )
-            )
-
     db.commit()
     db.refresh(user)
     db.refresh(deposit_tx)
@@ -706,13 +745,12 @@ def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    # 👇 NUEVA REGLA AÑADIDA AQUÍ
-    if not getattr(user, "deposito_realizado", False):
+    # Debe ser inversor: al menos 1 depósito acreditado/completado
+    if not user_has_completed_deposit(db, user):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Para solicitar un retiro, primero debes realizar al menos un depósito en la plataforma.",
+            detail="Para solicitar un retiro, primero debes ser inversor y tener al menos un depósito acreditado.",
         )
-    # 👆 FIN DE LA NUEVA REGLA
 
     total_a_descontar = quantize_usdt(monto_q + WITHDRAW_FEE_USDT)
     saldo_retirable_actual = Decimal(user.saldo_retirable or 0)
