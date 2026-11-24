@@ -26,14 +26,31 @@
         <div id="panel-users" class="panel active">
             <input type="text" id="searchId" placeholder="Buscar por ID de Telegram..." oninput="loadUsers()" class="input-search">
             <table>
-                <thead><tr><th>ID</th><th>Nombre</th><th>Congelado</th><th>Retirable</th><th>Acciones</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Congelado</th>
+                        <th>Retirable</th>
+                        <th>Depósito</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody id="usersTable"></tbody>
             </table>
         </div>
 
         <div id="panel-withdrawals" class="panel">
             <table>
-                <thead><tr><th>ID Transacción</th><th>Usuario</th><th>Monto</th><th>Red</th><th>Acciones</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>ID Transacción</th>
+                        <th>Usuario</th>
+                        <th>Monto</th>
+                        <th>Red</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody id="withdrawalsTable"></tbody>
             </table>
         </div>
@@ -53,4 +70,4 @@
     </div>
     <script src="js/admin.js"></script>
 </body>
-          </html>
+</html>
