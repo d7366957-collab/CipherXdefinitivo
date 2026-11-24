@@ -7,6 +7,9 @@
 
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   const LANG_STORAGE_KEY = "cipherx_lang";
+  const SUPPORT_URL = "https://t.me/YordanSoporte";
+  const INVESTOR_ONLY_WITHDRAW_MSG =
+    "Retiro habilitado solo a inversores (usuarios con almenos un depósito)";
 
   const I18N = {
     es: {
@@ -375,6 +378,7 @@
       name: "Trader",
       id: "000000",
       referralLink: "https://t.me/CipherX_Trade_bot",
+      depositoRealizado: false,
     },
     balances: {
       total: 0.00,
@@ -640,7 +644,7 @@
     clearTimeout(showToast._timer);
     showToast._timer = setTimeout(() => {
       toast.classList.remove("show");
-    }, 2300);
+    }, 2600);
   }
 
   async function copyToClipboard(text, successMsg = null) {
@@ -761,6 +765,7 @@
         if (Array.isArray(rawTx) && rawTx.length > 0) {
           mockData.transactions = rawTx.map((tx) => {
             const tipo = String(tx.tipo || "deposito").toLowerCase();
+            const estadoRaw = String(tx.estado || "").toLowerCase();
             const isOut = tipo === "retiro";
             const rawAmt = Math.abs(parseFloat(tx.monto || 0));
             const labelMap = {
@@ -770,7 +775,9 @@
               bono: t("tx.bonus"),
             };
             const statusMap = {
+              completado: t("tx.completed"),
               confirmado: t("tx.completed"),
+              pendiente: t("tx.pending"),
               procesando: t("tx.pending"),
               rechazado: t("tx.rejected"),
             };
@@ -779,7 +786,7 @@
               label: labelMap[tipo] || tipo,
               date: `${formatDateLabel(tx.fecha)}${tx.red ? ` · ${tx.red}` : ""}`,
               amount: isOut ? -rawAmt : rawAmt,
-              status: statusMap[String(tx.estado || "").toLowerCase()] || (tx.estado || t("tx.completed")),
+              status: statusMap[estadoRaw] || (tx.estado || t("tx.completed")),
             };
           });
         } else {
@@ -840,13 +847,13 @@
     // --- CÓDIGO PARA CARGAR LA FOTO DE PERFIL ---
     const avatarImg = document.getElementById("userAvatarImg");
     const avatarFallback = document.getElementById("userAvatarFallback");
-    
+
     if (tgUser && tgUser.photo_url && avatarImg) {
-        avatarImg.src = tgUser.photo_url;
-        avatarImg.style.display = "block";
-        if (avatarFallback) avatarFallback.style.display = "none";
+      avatarImg.src = tgUser.photo_url;
+      avatarImg.style.display = "block";
+      if (avatarFallback) avatarFallback.style.display = "none";
     } else if (realName && avatarFallback) {
-        avatarFallback.textContent = realName.charAt(0).toUpperCase();
+      avatarFallback.textContent = realName.charAt(0).toUpperCase();
     }
     // ---------------------------------------------
 
@@ -880,6 +887,7 @@
         mockData.user.name = data.nombre || realName || mockData.user.name;
         mockData.user.id = resolvedId;
         mockData.user.referralLink = `https://t.me/CipherX_Trade_bot?start=${resolvedId}`;
+        mockData.user.depositoRealizado = Boolean(data.deposito_realizado);
 
         const frozenVal = parseFloat(data.saldo_congelado ?? 0);
         const withdrawableVal = parseFloat(data.saldo_retirable ?? 0);
@@ -1313,6 +1321,16 @@
       });
     });
 
+    const supportFab = $("#walletSupportFab");
+    if (supportFab) {
+      supportFab.addEventListener("click", (e) => {
+        if (tg && typeof tg.openTelegramLink === "function") {
+          e.preventDefault();
+          tg.openTelegramLink(SUPPORT_URL);
+        }
+      });
+    }
+
     $("#btnTopLeft").addEventListener("click", () => {
       closeHeaderMenus();
       if (mockData.activeTab === "deposit" || mockData.activeTab === "withdraw") {
@@ -1494,7 +1512,12 @@
 
     $("#withdrawAmountInput").addEventListener("input", updateWithdrawCalc);
 
-    $("#submitWithdrawBtn").addEventListener("click", () => {
+    $("#submitWithdrawBtn").addEventListener("click", async () => {
+      if (!mockData.user.depositoRealizado) {
+        showToast(INVESTOR_ONLY_WITHDRAW_MSG);
+        return;
+      }
+
       const addr = $("#withdrawAddressInput").value.trim();
       const amount = parseFloat($("#withdrawAmountInput").value);
 
@@ -1511,33 +1534,62 @@
         return;
       }
 
-      mockData.balances.availableWallet = Number(
-        (mockData.balances.availableWallet - amount).toFixed(2)
-      );
-      mockData.balances.withdrawable = Math.max(
-        0,
-        Number((mockData.balances.withdrawable - amount).toFixed(2))
-      );
-      mockData.balances.total = Number(
-        (mockData.balances.frozen + mockData.balances.withdrawable).toFixed(2)
-      );
+      const tgIdNum = parseInt(mockData.user.id, 10);
+      if (Number.isNaN(tgIdNum) || tgIdNum <= 0) {
+        showToast(t("toast.previewNoTg"));
+        return;
+      }
 
-      mockData.transactions.unshift({
-        type: "withdraw",
-        label: t("tx.withdraw"),
-        date: t("tx.batchNow"),
-        amount: -amount,
-        status: t("tx.pending"),
-      });
+      try {
+        const res = await fetch("/api/withdraw/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            telegram_id: tgIdNum,
+            monto: amount,
+            red: mockData.selectedNetwork,
+            wallet_destino: addr,
+          }),
+        });
 
-      $("#withdrawAddressInput").value = "";
-      $("#withdrawAmountInput").value = "";
-      updateWithdrawCalc();
-      renderBalances();
-      renderTransactionsList();
+        if (!res.ok) {
+          let errMsg = t("toast.withdrawQueued");
+          try {
+            const errData = await res.json();
+            if (errData && errData.detail) {
+              errMsg = String(errData.detail);
+            }
+          } catch (_) {
+            // ignore parse error
+          }
+          showToast(errMsg);
+          return;
+        }
 
-      showToast(t("toast.withdrawQueued"));
-      navigateTo("wallet");
+        const data = await res.json();
+        const newRetirable = parseFloat(data.nuevo_saldo_retirable_usuario);
+        if (!Number.isNaN(newRetirable)) {
+          mockData.balances.availableWallet = Number(newRetirable.toFixed(2));
+          mockData.balances.withdrawable = Number(newRetirable.toFixed(2));
+          mockData.balances.total = Number(
+            (mockData.balances.frozen + mockData.balances.withdrawable).toFixed(2)
+          );
+        }
+
+        await syncUserActivityFromBackend(mockData.user.id, mockData.balances.total);
+
+        $("#withdrawAddressInput").value = "";
+        $("#withdrawAmountInput").value = "";
+        updateWithdrawCalc();
+        renderBalances();
+        renderTransactionsList();
+
+        showToast(t("toast.withdrawQueued"));
+        navigateTo("wallet");
+      } catch (err) {
+        console.error("Error solicitando retiro:", err);
+        showToast(t("toast.copyError"));
+      }
     });
   }
 
