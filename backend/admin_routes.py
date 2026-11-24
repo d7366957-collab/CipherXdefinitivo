@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 import sys
-from typing import Optional
+from typing import Literal, Optional
 
 from aiogram import Bot
 from dotenv import load_dotenv
@@ -36,13 +36,18 @@ def _get_admin_password() -> str:
     return pwd or "cipherx2024"
 
 
-def _get_models():
+def _get_main_module():
     main_mod = sys.modules.get("backend.main") or sys.modules.get("main")
     if main_mod is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Módulo principal no inicializado",
         )
+    return main_mod
+
+
+def _get_models():
+    main_mod = _get_main_module()
     return main_mod.User, main_mod.Transaction
 
 
@@ -60,6 +65,11 @@ class BalanceRequest(BaseModel):
     campo: str
     accion: str
     monto: float = Field(..., gt=0)
+
+
+class AcreditarDepositoRequest(BaseModel):
+    monto: float = Field(..., gt=0)
+    red: Literal["TON", "TRC20", "BEP20"] = "TRC20"
 
 
 class SorteoRequest(BaseModel):
@@ -153,7 +163,6 @@ def get_users(
                 Decimal(str(u.saldo_congelado or 0)) + Decimal(str(u.saldo_retirable or 0))
             ),
             "banned": bool(getattr(u, "is_banned", False)),
-            # 👇 NUEVA LÍNEA AÑADIDA AQUÍ
             "deposito_realizado": bool(getattr(u, "deposito_realizado", False)),
         }
         for u in users
@@ -215,6 +224,65 @@ def edit_balance(
         "congelado": float(user.saldo_congelado or 0),
         "retirable": float(user.saldo_retirable or 0),
     }
+
+
+@router.post("/users/{tg_id}/acreditar-deposito")
+def acreditar_deposito_manual(
+    tg_id: str,
+    data: AcreditarDepositoRequest,
+    db: Session = Depends(get_db),
+    _=Depends(verify_admin_token),
+):
+    main_mod = _get_main_module()
+    User = main_mod.User
+
+    tg_int = _parse_int_id(tg_id, "telegram_id")
+    user = db.query(User).filter(User.telegram_id == tg_int).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    monto_dec = _to_decimal(data.monto, "monto")
+    deposit_tx, comision = main_mod.apply_credited_deposit(
+        db=db,
+        user=user,
+        monto=monto_dec,
+        red=data.red,
+    )
+    db.commit()
+    db.refresh(user)
+    db.refresh(deposit_tx)
+
+    return {
+        "status": "ok",
+        "transaction_id": deposit_tx.id,
+        "telegram_id": user.telegram_id,
+        "red": data.red,
+        "monto_acreditado": float(deposit_tx.monto),
+        "comision_patrocinador": float(comision),
+        "deposito_realizado": bool(user.deposito_realizado),
+        "retirable": float(user.saldo_retirable or 0),
+        "congelado": float(user.saldo_congelado or 0),
+    }
+
+
+@router.post("/users/{tg_id}/marcar-deposito")
+def marcar_deposito(
+    tg_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(verify_admin_token),
+):
+    User, _ = _get_models()
+
+    tg_int = _parse_int_id(tg_id, "telegram_id")
+    user = db.query(User).filter(User.telegram_id == tg_int).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    user.deposito_realizado = True
+    db.commit()
+    db.refresh(user)
+
+    return {"status": "ok", "telegram_id": user.telegram_id, "deposito_realizado": True}
 
 
 @router.post("/users/{tg_id}/ban")
@@ -393,24 +461,3 @@ async def broadcast_message(
         await active_bot.session.close()
 
     return {"status": "ok", "enviados": enviados, "errores": errores}
-
-
-# 👇 NUEVA RUTA AÑADIDA AQUÍ
-@router.post("/users/{tg_id}/marcar-deposito")
-def marcar_deposito(
-    tg_id: str,
-    db: Session = Depends(get_db),
-    _=Depends(verify_admin_token),
-):
-    User, _ = _get_models()
-
-    tg_int = _parse_int_id(tg_id, "telegram_id")
-    user = db.query(User).filter(User.telegram_id == tg_int).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
-
-    user.deposito_realizado = True
-    db.commit()
-    db.refresh(user)
-    
-    return {"status": "ok", "telegram_id": user.telegram_id, "deposito_realizado": True}
