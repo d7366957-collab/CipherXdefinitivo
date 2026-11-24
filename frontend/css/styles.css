@@ -1618,3 +1618,36 @@ body {
   background: transparent !important;
   mix-blend-mode: screen !important;
 }
+
+/* --------------------------------------------------------------------------
+   Botón flotante de soporte en Billetera (@YordanSoporte)
+   -------------------------------------------------------------------------- */
+.wallet-support-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-height) + 14px);
+  z-index: 35;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0d2626 0%, #103836 100%);
+  border: 1px solid rgba(26, 228, 182, 0.5);
+  color: #f2f9fb;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 14px rgba(26, 228, 182, 0.22);
+  backdrop-filter: blur(8px);
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+#view-wallet.active .wallet-support-fab {
+  display: inline-flex;
+}
+
+.wallet-support-fab:active {
+  transform: scale(0.96);
+  border-color: var(--accent-mint);
+}
