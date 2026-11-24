@@ -74,18 +74,56 @@ async function loadUsers() {
         return;
     }
     const users = await res.json();
-    document.getElementById('usersTable').innerHTML = users.map(u => `
+    document.getElementById('usersTable').innerHTML = users.map(u => {
+        const isInvestor = Boolean(u.deposito_realizado);
+        return `
         <tr>
             <td>${u.id}</td>
             <td>${u.nombre || 'Sin nombre'} ${u.banned ? '🚫' : ''}</td>
             <td>${Number(u.congelado || 0).toFixed(2)}</td>
             <td>${Number(u.retirable || 0).toFixed(2)}</td>
+            <td>${isInvestor ? '✅ Depositado' : '⏳ Pendiente'}</td>
             <td>
+                <button class="btn-sm btn-green" onclick="acreditarDeposito('${u.id}')">Acreditar Dep.</button>
                 <button class="btn-sm" onclick="editBalance('${u.id}', 'retirable', 'sumar')">+10 Ret</button>
                 <button class="btn-sm btn-red" onclick="toggleBan('${u.id}', ${Boolean(u.banned)})">${u.banned ? 'Desbanear' : 'Banear'}</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+async function acreditarDeposito(id) {
+    const montoStr = prompt('Monto del depósito a acreditar (USDT):', '10');
+    if (!montoStr) return;
+    const monto = parseFloat(montoStr);
+    if (Number.isNaN(monto) || monto <= 0) {
+        return alert('Ingresa un monto válido mayor a 0');
+    }
+
+    const redRaw = prompt('Red utilizada (TON, TRC20, BEP20):', 'TRC20');
+    if (!redRaw) return;
+    const red = redRaw.trim().toUpperCase();
+    if (!['TON', 'TRC20', 'BEP20'].includes(red)) {
+        return alert('Red inválida. Usa TON, TRC20 o BEP20.');
+    }
+
+    const res = await fetch(`/api/admin/users/${id}/acreditar-deposito`, {
+        method: 'POST',
+        headers: getAuthHeaders(true),
+        body: JSON.stringify({ monto, red })
+    });
+    if (!res.ok) {
+        const msg = await parseErrorMessage(res, 'No se pudo acreditar el depósito');
+        return alert(msg);
+    }
+
+    const data = await res.json();
+    alert(
+        `Depósito acreditado (${Number(data.monto_acreditado).toFixed(2)} USDT en ${data.red}). ` +
+        `Usuario marcado como inversor.`
+    );
+    await loadUsers();
 }
 
 async function editBalance(id, campo, accion) {
