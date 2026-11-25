@@ -7,10 +7,10 @@ import random
 import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
-import asyncio # <--- NUEVO IMPORT PARA NOTIFICACIONES
+import asyncio
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
+from fastapi import FastAPI, Depends, Header, HTTPException, Query, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
@@ -24,8 +24,8 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Session, relationship
-from aiogram import Bot # <--- NUEVO IMPORT PARA NOTIFICACIONES
-from aiogram.enums import ParseMode # <--- NUEVO IMPORT PARA NOTIFICACIONES
+from aiogram import Bot
+from aiogram.enums import ParseMode
 
 # Asegurar que el directorio de backend esté en sys.path sin importar desde dónde se lance Uvicorn
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -96,7 +96,6 @@ async def enviar_notificacion_ganancias(telegram_id: int, ganancia_usdt: float, 
 # Modelos ORM (SQLAlchemy)
 # ==========================================================================
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -122,7 +121,6 @@ class User(Base):
         "Trade", back_populates="user", cascade="all, delete-orphan"
     )
 
-
 class Transaction(Base):
     __tablename__ = "transactions"
 
@@ -138,7 +136,6 @@ class Transaction(Base):
 
     user = relationship("User", back_populates="transactions")
 
-
 class Trade(Base):
     __tablename__ = "trades"
 
@@ -153,7 +150,6 @@ class Trade(Base):
     fecha = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="trades")
-
 
 # ==========================================================================
 # Reglas y Constantes de Negocio
@@ -174,10 +170,8 @@ TRADE_SIDES = ["long", "short"]
 ETH_LEVERAGE_OPTIONS = [5, 10, 20, 25]
 SIX_DECIMALS = Decimal("0.000001")
 
-
 def quantize_usdt(value: Decimal) -> Decimal:
     return Decimal(value).quantize(SIX_DECIMALS, rounding=ROUND_HALF_UP)
-
 
 def parse_sponsor_id(raw_val: Optional[str]) -> Optional[int]:
     if not raw_val:
@@ -190,7 +184,6 @@ def parse_sponsor_id(raw_val: Optional[str]) -> Optional[int]:
     sponsor_tg_id = int(cleaned)
     return sponsor_tg_id if sponsor_tg_id > 0 else None
 
-
 def extract_start_param_from_init_data(init_data: Optional[str]) -> Optional[str]:
     if not init_data:
         return None
@@ -199,7 +192,6 @@ def extract_start_param_from_init_data(init_data: Optional[str]) -> Optional[str
         return pairs.get("start_param")
     except Exception:
         return None
-
 
 def user_has_completed_deposit(db: Session, user: User) -> bool:
     """Verifica si el usuario es inversor (al menos 1 depósito completado)."""
@@ -219,7 +211,6 @@ def user_has_completed_deposit(db: Session, user: User) -> bool:
         user.deposito_realizado = True
         db.flush()
     return has_tx
-
 
 def apply_credited_deposit(
     db: Session,
@@ -261,7 +252,6 @@ def apply_credited_deposit(
             )
 
     return deposit_tx, comision_patrocinador
-
 
 def generate_daily_trades_amounts(capital_base: Decimal, num_trades: int = 5) -> List[Decimal]:
     daily_pct = Decimal(
@@ -320,18 +310,15 @@ def generate_daily_trades_amounts(capital_base: Decimal, num_trades: int = 5) ->
 
     return results
 
-
 # ==========================================================================
 # Esquemas Pydantic
 # ==========================================================================
-
 
 class UserRegisterIn(BaseModel):
     telegram_id: int = Field(..., gt=0)
     nombre: str = Field(..., min_length=1, max_length=120)
     username: Optional[str] = Field(default=None, max_length=120)
     id_patrocinador: Optional[int] = Field(default=None, gt=0)
-
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -347,7 +334,6 @@ class UserOut(BaseModel):
     id_patrocinador: Optional[int] = None
     created_at: datetime
 
-
 class ReferralItemOut(BaseModel):
     telegram_id: int
     nombre: str
@@ -356,7 +342,6 @@ class ReferralItemOut(BaseModel):
     bono: Decimal
     activo: bool = False
 
-
 class ReferralStatsOut(BaseModel):
     telegram_id: int
     total_referidos: int
@@ -364,13 +349,11 @@ class ReferralStatsOut(BaseModel):
     comisiones_totales: Decimal
     referidos: List[ReferralItemOut]
 
-
 class DepositWebhookIn(BaseModel):
     telegram_id: int = Field(..., gt=0)
     monto: Decimal = Field(..., gt=0)
     red: Literal["TON", "TRC20", "BEP20"]
     tx_hash: Optional[str] = Field(default=None, max_length=255)
-
 
 class DepositOut(BaseModel):
     transaction_id: int
@@ -382,13 +365,11 @@ class DepositOut(BaseModel):
     nuevo_saldo_congelado_usuario: Decimal
     estado: str
 
-
 class WithdrawRequestIn(BaseModel):
     telegram_id: int = Field(..., gt=0)
     monto: Decimal = Field(..., gt=0)
     red: Literal["TON", "TRC20", "BEP20"]
     wallet_destino: Optional[str] = Field(default=None, max_length=255)
-
 
 class WithdrawOut(BaseModel):
     transaction_id: int
@@ -401,7 +382,6 @@ class WithdrawOut(BaseModel):
     estado: str
     tiempo_estimado: str
 
-
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -411,7 +391,6 @@ class TransactionOut(BaseModel):
     red: Optional[str] = None
     estado: str
     fecha: datetime
-
 
 class TradeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -424,14 +403,12 @@ class TradeOut(BaseModel):
     apalancamiento: int = 10
     fecha: datetime
 
-
 class TradeBatchOut(BaseModel):
     telegram_id: int
     operaciones_generadas: int
     ganancia_neta_tanda: Decimal
     nuevo_saldo_retirable: Decimal
     trades: List[TradeOut]
-
 
 def build_user_out(user: User) -> UserOut:
     congelado = quantize_usdt(Decimal(user.saldo_congelado or Decimal("0.000000")))
@@ -449,7 +426,6 @@ def build_user_out(user: User) -> UserOut:
         id_patrocinador=user.id_patrocinador,
         created_at=created,
     )
-
 
 def get_or_create_user_with_bonus(
     db: Session,
@@ -490,9 +466,6 @@ def get_or_create_user_with_bonus(
                         estado="completado",
                     )
                 )
-                # --- NUEVA NOTIFICACIÓN ---
-                asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, user.nombre))
-                # --------------------------
                 updated = True
         if updated:
             db.commit()
@@ -530,14 +503,10 @@ def get_or_create_user_with_bonus(
                 estado="completado",
             )
         )
-        # --- NUEVA NOTIFICACIÓN ---
-        asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, user.nombre))
-        # --------------------------
 
     db.commit()
     db.refresh(user)
     return user
-
 
 # ==========================================================================
 # Aplicación FastAPI
@@ -558,11 +527,9 @@ from admin_routes import router as admin_router  # noqa: E402
 
 app.include_router(admin_router)
 
-
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "cipherx-api", "phase": "5-admin"}
-
 
 @app.get("/api/user/me", response_model=UserOut)
 def get_current_user_me(
@@ -628,7 +595,6 @@ def get_current_user_me(
         )
     return build_user_out(user)
 
-
 @app.get("/api/auth/verify", response_model=UserOut)
 def verify_auth_endpoint(
     auth_user: TelegramAuthUser = Depends(verify_telegram_webapp),
@@ -642,9 +608,8 @@ def verify_auth_endpoint(
     )
     return build_user_out(user)
 
-
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
+async def register_user(payload: UserRegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
     if existing_user:
         return build_user_out(existing_user)
@@ -680,14 +645,11 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
                 estado="completado",
             )
         )
-        # --- NUEVA NOTIFICACIÓN ---
-        asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, new_user.nombre))
-        # --------------------------
+        background_tasks.add_task(enviar_notificacion_referido, sponsor.telegram_id, new_user.nombre)
 
     db.commit()
     db.refresh(new_user)
     return build_user_out(new_user)
-
 
 @app.get("/api/referrals/{telegram_id}", response_model=ReferralStatsOut)
 def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
@@ -748,7 +710,6 @@ def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
         referidos=items,
     )
 
-
 @app.post("/api/deposit/webhook", response_model=DepositOut, status_code=status.HTTP_201_CREATED)
 def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get_db)):
     monto_q = quantize_usdt(payload.monto)
@@ -784,7 +745,6 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
         estado=deposit_tx.estado,
     )
 
-
 @app.post("/api/withdraw/request", response_model=WithdrawOut, status_code=status.HTTP_201_CREATED)
 def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)):
     monto_q = quantize_usdt(payload.monto)
@@ -800,7 +760,6 @@ def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    # Debe ser inversor: al menos 1 depósito acreditado/completado
     if not user_has_completed_deposit(db, user):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -839,7 +798,6 @@ def request_withdrawal(payload: WithdrawRequestIn, db: Session = Depends(get_db)
         tiempo_estimado="Procesando en lote (hasta 24 horas)",
     )
 
-
 @app.post("/api/admin/withdraw/{transaction_id}/approve", response_model=TransactionOut)
 def approve_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     tx = (
@@ -860,7 +818,6 @@ def approve_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(tx)
     return tx
-
 
 @app.post("/api/admin/withdraw/{transaction_id}/reject", response_model=TransactionOut)
 def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
@@ -889,14 +846,14 @@ def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     db.refresh(tx)
     return tx
 
-
 @app.post(
     "/api/trades/generate/{telegram_id}",
     response_model=TradeBatchOut,
     status_code=status.HTTP_201_CREATED,
 )
-def generate_trades_for_user(
+async def generate_trades_for_user(
     telegram_id: int,
+    background_tasks: BackgroundTasks,
     num_trades: int = Query(default=5, ge=1, le=20),
     db: Session = Depends(get_db),
 ):
@@ -943,11 +900,8 @@ def generate_trades_for_user(
 
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + net_gain)
     
-    # Calcular porcentaje del día para la notificación
     porcentaje_dia = float((net_gain / capital_base) * 100) if capital_base > 0 else 0.0
-    # --- NUEVA NOTIFICACIÓN ---
-    asyncio.create_task(enviar_notificacion_ganancias(user.telegram_id, float(net_gain), porcentaje_dia))
-    # --------------------------
+    background_tasks.add_task(enviar_notificacion_ganancias, user.telegram_id, float(net_gain), porcentaje_dia)
 
     db.commit()
     db.refresh(user)
@@ -958,7 +912,6 @@ def generate_trades_for_user(
         nuevo_saldo_retirable=user.saldo_retirable,
         trades=created_trades,
     )
-
 
 @app.get("/api/trades/{telegram_id}", response_model=List[TradeOut])
 def get_user_trades(telegram_id: int, db: Session = Depends(get_db)):
@@ -986,7 +939,6 @@ def get_user_trades(telegram_id: int, db: Session = Depends(get_db)):
         for t in trades
     ]
 
-
 @app.get("/api/transactions/{telegram_id}", response_model=List[TransactionOut])
 def get_user_transactions(telegram_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
@@ -1000,7 +952,6 @@ def get_user_transactions(telegram_id: int, db: Session = Depends(get_db)):
         .order_by(Transaction.fecha.desc(), Transaction.id.desc())
         .all()
     )
-
 
 @app.get("/api/user/{telegram_id}", response_model=UserOut)
 def get_user_by_telegram_id(telegram_id: int, db: Session = Depends(get_db)):
