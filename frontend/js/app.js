@@ -729,6 +729,35 @@
     }
   }
 
+  // ------------------------------------------------------------------------
+  // NUEVA FUNCIÓN: Sincronizar Referidos Reales desde el Backend
+  // ------------------------------------------------------------------------
+  async function syncReferralsFromBackend(telegramId) {
+    if (!telegramId) return;
+    try {
+      const res = await fetch(`/api/referrals/${encodeURIComponent(telegramId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        
+        mockData.referralStats.total = data.total_referidos || 0;
+        mockData.referralStats.active = data.referidos_activos || 0;
+        mockData.referralStats.commissions = parseFloat(data.comisiones_totales || 0);
+
+        if (Array.isArray(data.referidos) && data.referidos.length > 0) {
+          mockData.referrals = data.referidos.map((ref) => ({
+            handle: ref.username ? `@${ref.username}` : (ref.nombre || `ID: ${ref.telegram_id}`),
+            timeAgo: formatDateLabel(ref.fecha),
+            bonus: `+${formatNumber(ref.bono, 2)} USDT`
+          }));
+        } else {
+          mockData.referrals = [];
+        }
+      }
+    } catch (err) {
+      console.warn("No se pudieron cargar los referidos:", err);
+    }
+  }
+
   async function syncUserActivityFromBackend(telegramId, capitalBase) {
     if (!telegramId) return;
 
@@ -911,7 +940,11 @@
         mockData.balances.dailyYieldPct = 0.0;
         mockData.balances.dailyDeltaPct = 0.0;
 
-        await syncUserActivityFromBackend(resolvedId, mockData.balances.total);
+        // AQUI LLAMAMOS A LA NUEVA FUNCION DE REFERIDOS
+        await Promise.all([
+            syncUserActivityFromBackend(resolvedId, mockData.balances.total),
+            syncReferralsFromBackend(resolvedId)
+        ]);
 
         if (mockData.trades.length > 0) {
           const sumPnL = mockData.trades.reduce((acc, item) => acc + Number(item.amount || 0), 0);
