@@ -7,6 +7,7 @@ import random
 import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
+import asyncio # <--- NUEVO IMPORT PARA NOTIFICACIONES
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
@@ -23,6 +24,8 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Session, relationship
+from aiogram import Bot # <--- NUEVO IMPORT PARA NOTIFICACIONES
+from aiogram.enums import ParseMode # <--- NUEVO IMPORT PARA NOTIFICACIONES
 
 # Asegurar que el directorio de backend esté en sys.path sin importar desde dónde se lance Uvicorn
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -45,6 +48,49 @@ from auth import (  # noqa: E402
 from database import Base, engine, get_db  # noqa: E402
 
 logger = logging.getLogger("cipherx.api")
+
+# ==========================================================================
+# NOTIFICACIONES ASÍNCRONAS DEL BOT
+# ==========================================================================
+async def enviar_notificacion_referido(telegram_id: int, nombre_referido: str):
+    bot_token = os.getenv("BOT_TOKEN")
+    if not bot_token:
+        return
+    bot = Bot(token=bot_token)
+    mensaje = (
+        f"🎉 <b>¡Nuevo Referido!</b>\n\n"
+        f"👤 <b>{nombre_referido}</b> se ha unido con tu enlace.\n"
+        f"💰 Has recibido <b>+1.00 USDT</b> en tu saldo congelado.\n"
+        f"📈 ¡Sigue generando rendimientos retirables!\n"
+        f"💸 Desde ahora ganas el <b>12% de comisión</b> sobre lo que este usuario invierta."
+    )
+    try:
+        await bot.send_message(chat_id=telegram_id, text=mensaje, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.error(f"Error enviando msg de referido a {telegram_id}: {e}")
+    finally:
+        await bot.session.close()
+
+async def enviar_notificacion_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: float):
+    bot_token = os.getenv("BOT_TOKEN")
+    if not bot_token:
+        return
+    bot = Bot(token=bot_token)
+    mensaje = (
+        f"📊 <b>¡Reporte Diario de CipherX!</b>\n\n"
+        f"🤖 Nuestro equipo de trading ha completado las operaciones de hoy.\n"
+        f"📈 <b>Rendimiento generado:</b> +{porcentaje_dia:.2f}%\n"
+        f"💵 <b>Ganancia neta:</b> +{ganancia_usdt:.2f} USDT\n"
+        f"💳 <i>(Añadidos a tu saldo retirable)</i>\n\n"
+        f"🚀 ¡Sigue así, tu capital está trabajando por ti!"
+    )
+    try:
+        await bot.send_message(chat_id=telegram_id, text=mensaje, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.error(f"Error enviando msg de ganancias a {telegram_id}: {e}")
+    finally:
+        await bot.session.close()
+# ==========================================================================
 
 # ==========================================================================
 # Modelos ORM (SQLAlchemy)
@@ -444,6 +490,9 @@ def get_or_create_user_with_bonus(
                         estado="completado",
                     )
                 )
+                # --- NUEVA NOTIFICACIÓN ---
+                asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, user.nombre))
+                # --------------------------
                 updated = True
         if updated:
             db.commit()
@@ -481,6 +530,9 @@ def get_or_create_user_with_bonus(
                 estado="completado",
             )
         )
+        # --- NUEVA NOTIFICACIÓN ---
+        asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, user.nombre))
+        # --------------------------
 
     db.commit()
     db.refresh(user)
@@ -628,6 +680,9 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
                 estado="completado",
             )
         )
+        # --- NUEVA NOTIFICACIÓN ---
+        asyncio.create_task(enviar_notificacion_referido(sponsor.telegram_id, new_user.nombre))
+        # --------------------------
 
     db.commit()
     db.refresh(new_user)
@@ -887,6 +942,13 @@ def generate_trades_for_user(
         net_gain = quantize_usdt(net_gain + res)
 
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + net_gain)
+    
+    # Calcular porcentaje del día para la notificación
+    porcentaje_dia = float((net_gain / capital_base) * 100) if capital_base > 0 else 0.0
+    # --- NUEVA NOTIFICACIÓN ---
+    asyncio.create_task(enviar_notificacion_ganancias(user.telegram_id, float(net_gain), porcentaje_dia))
+    # --------------------------
+
     db.commit()
     db.refresh(user)
     return TradeBatchOut(
