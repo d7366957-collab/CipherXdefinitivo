@@ -8,9 +8,10 @@ import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
 import asyncio
+import threading  # <--- NUEVO IMPORT
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, Header, HTTPException, Query, status, BackgroundTasks
+from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
@@ -90,6 +91,12 @@ async def enviar_notificacion_ganancias(telegram_id: int, ganancia_usdt: float, 
         logger.error(f"Error enviando msg de ganancias a {telegram_id}: {e}")
     finally:
         await bot.session.close()
+
+# --- FUNCIÓN AUXILIAR PARA EJECUTAR EN HILO ---
+def enviar_en_hilo(coro_func, *args):
+    def run():
+        asyncio.run(coro_func(*args))
+    threading.Thread(target=run).start()
 # ==========================================================================
 
 # ==========================================================================
@@ -609,7 +616,7 @@ def verify_auth_endpoint(
     return build_user_out(user)
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register_user(payload: UserRegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
     if existing_user:
         return build_user_out(existing_user)
@@ -645,7 +652,9 @@ async def register_user(payload: UserRegisterIn, background_tasks: BackgroundTas
                 estado="completado",
             )
         )
-        background_tasks.add_task(enviar_notificacion_referido, sponsor.telegram_id, new_user.nombre)
+        # --- HILO INDEPENDIENTE ---
+        enviar_en_hilo(enviar_notificacion_referido, sponsor.telegram_id, new_user.nombre)
+        # --------------------------
 
     db.commit()
     db.refresh(new_user)
@@ -851,9 +860,8 @@ def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     response_model=TradeBatchOut,
     status_code=status.HTTP_201_CREATED,
 )
-async def generate_trades_for_user(
+def generate_trades_for_user(
     telegram_id: int,
-    background_tasks: BackgroundTasks,
     num_trades: int = Query(default=5, ge=1, le=20),
     db: Session = Depends(get_db),
 ):
@@ -901,7 +909,9 @@ async def generate_trades_for_user(
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + net_gain)
     
     porcentaje_dia = float((net_gain / capital_base) * 100) if capital_base > 0 else 0.0
-    background_tasks.add_task(enviar_notificacion_ganancias, user.telegram_id, float(net_gain), porcentaje_dia)
+    # --- HILO INDEPENDIENTE ---
+    enviar_en_hilo(enviar_notificacion_ganancias, user.telegram_id, float(net_gain), porcentaje_dia)
+    # --------------------------
 
     db.commit()
     db.refresh(user)
