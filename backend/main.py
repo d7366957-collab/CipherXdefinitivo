@@ -8,7 +8,8 @@ import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
 import asyncio
-import threading  # <--- NUEVO IMPORT
+import threading
+import requests  # <--- NUEVO IMPORT PARA ENVIAR MENSAJES SIN FALLOS
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
@@ -25,8 +26,6 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Session, relationship
-from aiogram import Bot
-from aiogram.enums import ParseMode
 
 # Asegurar que el directorio de backend esté en sys.path sin importar desde dónde se lance Uvicorn
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -51,13 +50,20 @@ from database import Base, engine, get_db  # noqa: E402
 logger = logging.getLogger("cipherx.api")
 
 # ==========================================================================
-# NOTIFICACIONES ASÍNCRONAS DEL BOT
+# NOTIFICACIONES DEL BOT (Usando requests + threading)
 # ==========================================================================
-async def enviar_notificacion_referido(telegram_id: int, nombre_referido: str):
+def enviar_mensaje_telegram(telegram_id: int, texto: str):
     bot_token = os.getenv("BOT_TOKEN")
     if not bot_token:
         return
-    bot = Bot(token=bot_token)
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {"chat_id": telegram_id, "text": texto, "parse_mode": "HTML"}
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        logger.error(f"Error enviando mensaje a {telegram_id}: {e}")
+
+def notificar_referido(telegram_id: int, nombre_referido: str):
     mensaje = (
         f"🎉 <b>¡Nuevo Referido!</b>\n\n"
         f"👤 <b>{nombre_referido}</b> se ha unido con tu enlace.\n"
@@ -65,18 +71,9 @@ async def enviar_notificacion_referido(telegram_id: int, nombre_referido: str):
         f"📈 ¡Sigue generando rendimientos retirables!\n"
         f"💸 Desde ahora ganas el <b>12% de comisión</b> sobre lo que este usuario invierta."
     )
-    try:
-        await bot.send_message(chat_id=telegram_id, text=mensaje, parse_mode=ParseMode.HTML)
-    except Exception as e:
-        logger.error(f"Error enviando msg de referido a {telegram_id}: {e}")
-    finally:
-        await bot.session.close()
+    threading.Thread(target=enviar_mensaje_telegram, args=(telegram_id, mensaje)).start()
 
-async def enviar_notificacion_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: float):
-    bot_token = os.getenv("BOT_TOKEN")
-    if not bot_token:
-        return
-    bot = Bot(token=bot_token)
+def notificar_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: float):
     mensaje = (
         f"📊 <b>¡Reporte Diario de CipherX!</b>\n\n"
         f"🤖 Nuestro equipo de trading ha completado las operaciones de hoy.\n"
@@ -85,19 +82,7 @@ async def enviar_notificacion_ganancias(telegram_id: int, ganancia_usdt: float, 
         f"💳 <i>(Añadidos a tu saldo retirable)</i>\n\n"
         f"🚀 ¡Sigue así, tu capital está trabajando por ti!"
     )
-    try:
-        await bot.send_message(chat_id=telegram_id, text=mensaje, parse_mode=ParseMode.HTML)
-    except Exception as e:
-        logger.error(f"Error enviando msg de ganancias a {telegram_id}: {e}")
-    finally:
-        await bot.session.close()
-
-# --- FUNCIÓN AUXILIAR PARA EJECUTAR EN HILO ---
-def enviar_en_hilo(coro_func, *args):
-    def run():
-        asyncio.run(coro_func(*args))
-    threading.Thread(target=run).start()
-# ==========================================================================
+    threading.Thread(target=enviar_mensaje_telegram, args=(telegram_id, mensaje)).start()
 
 # ==========================================================================
 # Modelos ORM (SQLAlchemy)
@@ -201,7 +186,6 @@ def extract_start_param_from_init_data(init_data: Optional[str]) -> Optional[str
         return None
 
 def user_has_completed_deposit(db: Session, user: User) -> bool:
-    """Verifica si el usuario es inversor (al menos 1 depósito completado)."""
     if bool(getattr(user, "deposito_realizado", False)):
         return True
     has_tx = (
@@ -225,7 +209,6 @@ def apply_credited_deposit(
     monto: Decimal,
     red: Literal["TON", "TRC20", "BEP20"],
 ) -> tuple[Transaction, Decimal]:
-    """Acredita un depósito completado, marca al usuario como inversor y paga comisión al patrocinador."""
     monto_q = quantize_usdt(monto)
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + monto_q)
     user.deposito_realizado = True
@@ -329,7 +312,6 @@ class UserRegisterIn(BaseModel):
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
     telegram_id: int
     nombre: str
@@ -391,7 +373,6 @@ class WithdrawOut(BaseModel):
 
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
     tipo: str
     monto: Decimal
@@ -401,7 +382,6 @@ class TransactionOut(BaseModel):
 
 class TradeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
     par: str
     tipo: str
@@ -529,7 +509,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Se importa después de definir User, Transaction, Trade y Base para evitar import circular
 from admin_routes import router as admin_router  # noqa: E402
 
 app.include_router(admin_router)
@@ -652,12 +631,13 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
                 estado="completado",
             )
         )
-        # --- HILO INDEPENDIENTE ---
-        enviar_en_hilo(enviar_notificacion_referido, sponsor.telegram_id, new_user.nombre)
-        # --------------------------
 
     db.commit()
     db.refresh(new_user)
+    
+    if sponsor:
+        notificar_referido(sponsor.telegram_id, new_user.nombre)
+
     return build_user_out(new_user)
 
 @app.get("/api/referrals/{telegram_id}", response_model=ReferralStatsOut)
@@ -909,9 +889,7 @@ def generate_trades_for_user(
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + net_gain)
     
     porcentaje_dia = float((net_gain / capital_base) * 100) if capital_base > 0 else 0.0
-    # --- HILO INDEPENDIENTE ---
-    enviar_en_hilo(enviar_notificacion_ganancias, user.telegram_id, float(net_gain), porcentaje_dia)
-    # --------------------------
+    notificar_ganancias(user.telegram_id, float(net_gain), porcentaje_dia)
 
     db.commit()
     db.refresh(user)
