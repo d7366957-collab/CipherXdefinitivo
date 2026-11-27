@@ -7,7 +7,7 @@ import random
 import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
-import requests
+import httpx
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
@@ -48,21 +48,21 @@ from database import Base, engine, get_db  # noqa: E402
 logger = logging.getLogger("cipherx.api")
 
 # ==========================================================================
-# NOTIFICACIONES DEL BOT (Usando requests + threading)
+# NOTIFICACIONES DEL BOT (Asíncronas con httpx)
 # ==========================================================================
-def enviar_mensaje_telegram(telegram_id: int, texto: str):
+async def enviar_mensaje_telegram(telegram_id: int, texto: str):
     bot_token = os.getenv("BOT_TOKEN")
     if not bot_token:
         return
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {"chat_id": telegram_id, "text": texto, "parse_mode": "HTML"}
     try:
-        # Usamos data=payload en lugar de json=payload para evitar fallos en Telegram
-        requests.post(url, data=payload, timeout=10)
+        async with httpx.AsyncClient() as client:
+            await client.post(url, data=payload, timeout=10)
     except Exception as e:
         logger.error(f"Error enviando mensaje a {telegram_id}: {e}")
 
-def notificar_referido(telegram_id: int, nombre_referido: str):
+async def notificar_referido(telegram_id: int, nombre_referido: str):
     mensaje = (
         f"🎉 <b>¡Nuevo Referido!</b>\n\n"
         f"👤 <b>{nombre_referido}</b> se ha unido con tu enlace.\n"
@@ -70,9 +70,9 @@ def notificar_referido(telegram_id: int, nombre_referido: str):
         f"📈 ¡Sigue generando rendimientos retirables!\n"
         f"💸 Desde ahora ganas el <b>12% de comisión</b> sobre lo que este usuario invierta."
     )
-    threading.Thread(target=enviar_mensaje_telegram, args=(telegram_id, mensaje)).start()
+    await enviar_mensaje_telegram(telegram_id, mensaje)
 
-def notificar_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: float):
+async def notificar_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: float):
     mensaje = (
         f"📊 <b>¡Reporte Diario de CipherX!</b>\n\n"
         f"🤖 Nuestro equipo de trading ha completado las operaciones de hoy.\n"
@@ -81,7 +81,7 @@ def notificar_ganancias(telegram_id: int, ganancia_usdt: float, porcentaje_dia: 
         f"💳 <i>(Añadidos a tu saldo retirable)</i>\n\n"
         f"🚀 ¡Sigue así, tu capital está trabajando por ti!"
     )
-    threading.Thread(target=enviar_mensaje_telegram, args=(telegram_id, mensaje)).start()
+    await enviar_mensaje_telegram(telegram_id, mensaje)
 
 # ==========================================================================
 # Modelos ORM (SQLAlchemy)
@@ -594,7 +594,7 @@ def verify_auth_endpoint(
     return build_user_out(user)
 
 @app.post("/api/user/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
+async def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.telegram_id == payload.telegram_id).first()
     if existing_user:
         return build_user_out(existing_user)
@@ -635,7 +635,7 @@ def register_user(payload: UserRegisterIn, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     if sponsor:
-        notificar_referido(sponsor.telegram_id, new_user.nombre)
+        await notificar_referido(sponsor.telegram_id, new_user.nombre)
 
     return build_user_out(new_user)
 
@@ -699,7 +699,7 @@ def get_user_referrals(telegram_id: int, db: Session = Depends(get_db)):
     )
 
 @app.post("/api/deposit/webhook", response_model=DepositOut, status_code=status.HTTP_201_CREATED)
-def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get_db)):
+async def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get_db)):
     monto_q = quantize_usdt(payload.monto)
     if monto_q < MIN_DEPOSIT_USDT:
         raise HTTPException(
@@ -723,23 +723,23 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
     db.refresh(user)
     db.refresh(deposit_tx)
 
-    # --- NOTIFICACIONES AÑADIDAS AQUÍ ---
+    # Notificación al usuario
     texto_deposito = (
         f"✅ <b>¡Depósito Confirmado!</b>\n\n"
         f"💵 Monto: <b>{monto_q} USDT</b>\n"
         f"🌐 Red: {payload.red}\n\n"
         f"Tu saldo retirable ha sido actualizado. ¡Ya puedes solicitar tu retiro!"
     )
-    threading.Thread(target=enviar_mensaje_telegram, args=(user.telegram_id, texto_deposito)).start()
+    await enviar_mensaje_telegram(user.telegram_id, texto_deposito)
 
+    # Notificación al patrocinador
     if user.id_patrocinador and comision_patrocinador > 0:
         texto_comision = (
             f"🎁 <b>¡Comisión de Referido!</b>\n\n"
             f"Tu referido ha depositado <b>{monto_q} USDT</b>.\n"
             f"Has recibido <b>{comision_patrocinador} USDT</b> en tu saldo retirable."
         )
-        threading.Thread(target=enviar_mensaje_telegram, args=(user.id_patrocinador, texto_comision)).start()
-    # ------------------------------------
+        await enviar_mensaje_telegram(user.id_patrocinador, texto_comision)
 
     return DepositOut(
         transaction_id=deposit_tx.id,
@@ -858,7 +858,7 @@ def reject_withdrawal(transaction_id: int, db: Session = Depends(get_db)):
     response_model=TradeBatchOut,
     status_code=status.HTTP_201_CREATED,
 )
-def generate_trades_for_user(
+async def generate_trades_for_user(
     telegram_id: int,
     num_trades: int = Query(default=5, ge=1, le=20),
     db: Session = Depends(get_db),
@@ -907,7 +907,7 @@ def generate_trades_for_user(
     user.saldo_retirable = quantize_usdt(Decimal(user.saldo_retirable or 0) + net_gain)
     
     porcentaje_dia = float((net_gain / capital_base) * 100) if capital_base > 0 else 0.0
-    notificar_ganancias(user.telegram_id, float(net_gain), porcentaje_dia)
+    await notificar_ganancias(user.telegram_id, float(net_gain), porcentaje_dia)
 
     db.commit()
     db.refresh(user)
