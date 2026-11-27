@@ -7,9 +7,7 @@ import random
 import sys
 from typing import List, Literal, Optional
 from urllib.parse import parse_qsl
-import asyncio
-import threading
-import requests  # <--- NUEVO IMPORT PARA ENVIAR MENSAJES SIN FALLOS
+import requests
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, status
@@ -59,7 +57,8 @@ def enviar_mensaje_telegram(telegram_id: int, texto: str):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {"chat_id": telegram_id, "text": texto, "parse_mode": "HTML"}
     try:
-        requests.post(url, json=payload, timeout=10)
+        # Usamos data=payload en lugar de json=payload para evitar fallos en Telegram
+        requests.post(url, data=payload, timeout=10)
     except Exception as e:
         logger.error(f"Error enviando mensaje a {telegram_id}: {e}")
 
@@ -723,6 +722,25 @@ def process_deposit_webhook(payload: DepositWebhookIn, db: Session = Depends(get
     db.commit()
     db.refresh(user)
     db.refresh(deposit_tx)
+
+    # --- NOTIFICACIONES AÑADIDAS AQUÍ ---
+    texto_deposito = (
+        f"✅ <b>¡Depósito Confirmado!</b>\n\n"
+        f"💵 Monto: <b>{monto_q} USDT</b>\n"
+        f"🌐 Red: {payload.red}\n\n"
+        f"Tu saldo retirable ha sido actualizado. ¡Ya puedes solicitar tu retiro!"
+    )
+    threading.Thread(target=enviar_mensaje_telegram, args=(user.telegram_id, texto_deposito)).start()
+
+    if user.id_patrocinador and comision_patrocinador > 0:
+        texto_comision = (
+            f"🎁 <b>¡Comisión de Referido!</b>\n\n"
+            f"Tu referido ha depositado <b>{monto_q} USDT</b>.\n"
+            f"Has recibido <b>{comision_patrocinador} USDT</b> en tu saldo retirable."
+        )
+        threading.Thread(target=enviar_mensaje_telegram, args=(user.id_patrocinador, texto_comision)).start()
+    # ------------------------------------
+
     return DepositOut(
         transaction_id=deposit_tx.id,
         telegram_id=user.telegram_id,
